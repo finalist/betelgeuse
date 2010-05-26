@@ -458,12 +458,12 @@ public class ARXView {
                 state.layer.allAssetsDownloaded = true;
                 state.layer.assetDownloadTime = System.currentTimeMillis();
 
-                ARXMessages.putMessage("ASSETS_LOADING_COMPLETE", "Dimension '" + state.layer.xmlName + "' loaded", "",
+                ARXMessages.putMessage("ASSETS_LOADING_COMPLETE", "Dimension '" + state.layer.getDim().getName() + "' loaded", "",
                         ARXMessages.refreshCompleteIcon, 3000, true);
             }
 
             if (!allAssetsDownloaded) {
-                ARXMessages.putMessage("ASSETS_LOADING", "Dimension '" + state.layer.xmlName + "' loading",
+                ARXMessages.putMessage("ASSETS_LOADING", "Dimension '" + state.layer.getDim().getName() + "' loading",
                         ARXMessages.refreshIcon, 500);
             }
         }
@@ -560,7 +560,7 @@ public class ARXView {
             String refreshTimeTxt = ((System.currentTimeMillis() - state.layer.creationTime) / 1000) + "s";
             String validForTxt = (state.layer.xmlHasRefreshTime) ? (state.layer.xmlValidFor / 1000) + "s" : "NA";
 
-            dw.drawText(infoCurX, infoCurY, "Dimension: " + state.layer.xmlName);
+            dw.drawText(infoCurX, infoCurY, "Dimension: " + state.layer.getDim().getName());
             infoCurY += infoLineHeight * 2;
             dw.drawText(infoCurX, infoCurY, "Latitude: " + state.curFix.lat);
             infoCurY += infoLineHeight;

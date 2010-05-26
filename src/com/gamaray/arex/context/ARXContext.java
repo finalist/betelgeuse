@@ -1,10 +1,14 @@
-package com.gamaray.arex;
+package com.gamaray.arex.context;
 
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.Map;
 
+import com.gamaray.arex.ARXDownload;
+import com.gamaray.arex.ARXRender;
 import com.gamaray.arex.geo.GeoPoint;
 import com.gamaray.arex.gui.Bitmap;
+import com.gamaray.arex.io.ARXHttpInputStream;
 import com.gamaray.arex.render3d.Matrix3D;
 import com.gamaray.arex.xml.Element;
 
@@ -49,7 +53,7 @@ public interface ARXContext {
 
     public double getRandomDouble();
 
-    public HashMap getPrefs();
+    public Map<String,Object> getPrefs();
 
-    public void setPrefs(HashMap prefs);
+    public void setPrefs(Map<String,Object> prefs);
 }

@@ -1,5 +1,6 @@
 package com.gamaray.arex;
 
+import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.geo.GeoPoint;
 
 public class ARXState {

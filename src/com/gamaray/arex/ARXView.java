@@ -5,7 +5,9 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 
+import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.format3d.SimpleVFS;
 import com.gamaray.arex.gui.Bitmap;
 import com.gamaray.arex.gui.DrawWindow;
@@ -82,7 +84,7 @@ public class ARXView {
 
             ARXMessages.loadIcons(ctx);
 
-            HashMap prefs = ctx.getPrefs();
+            Map<String,Object> prefs = ctx.getPrefs();
             if (!prefs.containsKey("UID")) {
                 prefs.put("UID", "UID" + Math.abs(ctx.getRandomLong()));
 

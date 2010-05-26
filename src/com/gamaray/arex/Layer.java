@@ -134,10 +134,10 @@ public class Layer {
         // Locations
         Element refptsElem = layerElem.getChildElement("locations");
         if (refptsElem != null) {
-            for (int i = 0; i < refptsElem.childElements.size(); i++) {
-                Element refptElem = (Element) refptsElem.childElements.get(i);
+            for (int i = 0; i < refptsElem.getChildElements().size(); i++) {
+                Element refptElem = (Element) refptsElem.getChildElements().get(i);
 
-                if (refptElem.name.equals("location")) {
+                if (refptElem.getName().equals("location")) {
                     GeoPoint refpt = new GeoPoint();
 
                     String locId = refptElem.getAttribValue("id", "AUTO_ID_" + (idCounter++));
@@ -155,10 +155,10 @@ public class Layer {
         // Assets
         Element assetsElem = layerElem.getChildElement("assets");
         if (assetsElem != null) {
-            for (int i = 0; i < assetsElem.childElements.size(); i++) {
-                Element assetElem = (Element) assetsElem.childElements.get(i);
+            for (int i = 0; i < assetsElem.getChildElements().size(); i++) {
+                Element assetElem = (Element) assetsElem.getChildElements().get(i);
 
-                if (assetElem.name.equals("asset")) {
+                if (assetElem.getName().equals("asset")) {
                     Asset das = new Asset();
 
                     das.xmlId = assetElem.getAttribValue("id", "AUTO_ID_" + (idCounter++));
@@ -187,15 +187,15 @@ public class Layer {
         // Placemarks
         Element placemarksElem = layerElem.getChildElement("features");
         if (placemarksElem != null) {
-            for (int i = 0; i < placemarksElem.childElements.size(); i++) {
-                Element pmElem = (Element) placemarksElem.childElements.get(i);
+            for (int i = 0; i < placemarksElem.getChildElements().size(); i++) {
+                Element pmElem = (Element) placemarksElem.getChildElements().get(i);
                 Placemark pm = null;
 
-                if (pmElem.name.equals("feature3d")) {
+                if (pmElem.getName().equals("feature3d")) {
                     pm = new Placemark3D();
-                } else if (pmElem.name.equals("featureImg")) {
+                } else if (pmElem.getName().equals("featureImg")) {
                     pm = new PlacemarkImg();
-                } else if (pmElem.name.equals("featureTxt")) {
+                } else if (pmElem.getName().equals("featureTxt")) {
                     pm = new PlacemarkTxt();
                 }
 
@@ -268,13 +268,13 @@ public class Layer {
         // Overlays
         Element overlaysElem = layerElem.getChildElement("overlays");
         if (overlaysElem != null) {
-            for (int i = 0; i < overlaysElem.childElements.size(); i++) {
-                Element ovlElem = (Element) overlaysElem.childElements.get(i);
+            for (int i = 0; i < overlaysElem.getChildElements().size(); i++) {
+                Element ovlElem = (Element) overlaysElem.getChildElements().get(i);
                 Overlay ovl = null;
 
-                if (ovlElem.name.equals("overlayImg")) {
+                if (ovlElem.getName().equals("overlayImg")) {
                     ovl = new OverlayImg();
-                } else if (ovlElem.name.equals("overlayTxt")) {
+                } else if (ovlElem.getName().equals("overlayTxt")) {
                     ovl = new OverlayTxt();
                 }
 

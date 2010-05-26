@@ -3,6 +3,7 @@ package com.gamaray.arex;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.render3d.Camera;
 import com.gamaray.arex.render3d.Matrix3D;
 import com.gamaray.arex.render3d.Object3D;

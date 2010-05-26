@@ -2,6 +2,7 @@ package com.gamaray.arex;
 
 import java.util.ArrayList;
 
+import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.gui.Bitmap;
 import com.gamaray.arex.gui.DrawWindow;
 import com.gamaray.arex.gui.Drawable;

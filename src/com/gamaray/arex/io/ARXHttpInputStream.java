@@ -1,14 +1,14 @@
-package com.gamaray.arex;
+package com.gamaray.arex.io;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 public class ARXHttpInputStream extends InputStream {
-    public static boolean killMode = false;
+    private static boolean killMode = false;
 
-    int contentLength;
-    int totalBytesRead;
-    InputStream is;
+    private int contentLength;
+    private int totalBytesRead;
+    private InputStream is;
 
     public ARXHttpInputStream(InputStream is, int contentLength) {
         this.is = is;
@@ -102,4 +102,14 @@ public class ARXHttpInputStream extends InputStream {
         is.close();
         throw new IOException("KILL MODE");
     }
+
+    public static boolean isKillMode() {
+        return killMode;
+    }
+
+    public static void setKillMode(boolean killMode) {
+        ARXHttpInputStream.killMode = killMode;
+    }
+    
+    
 }

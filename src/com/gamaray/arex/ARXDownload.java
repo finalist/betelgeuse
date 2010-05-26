@@ -2,7 +2,9 @@ package com.gamaray.arex;
 
 import java.util.HashMap;
 
+import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.format3d.GAMA3DHandler;
+import com.gamaray.arex.io.ARXHttpInputStream;
 import com.gamaray.arex.xml.Element;
 
 public class ARXDownload implements Runnable {
@@ -61,7 +63,7 @@ public class ARXDownload implements Runnable {
                     synchronized (this) {
                         workingList.remove(jobId);
 
-                        if (!ARXHttpInputStream.killMode) {
+                        if (!ARXHttpInputStream.isKillMode()) {
                             completedList.put(jobId, result);
                         } else {
                             workingList.put(jobId, request);

@@ -2,7 +2,7 @@ package com.gamaray.arex.gui;
 
 import java.io.InputStream;
 
-import com.gamaray.arex.ARXContext;
+import com.gamaray.arex.context.ARXContext;
 
 public class GUIUtil {
     public static Bitmap loadIcon(String name, ARXContext ctx) {

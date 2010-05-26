@@ -2,39 +2,10 @@ package com.gamaray.arex;
 
 import static android.hardware.SensorManager.SENSOR_DELAY_FASTEST;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
-
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-
-import org.xml.sax.Attributes;
-import org.xml.sax.helpers.DefaultHandler;
 
 import android.app.Activity;
-import android.content.ContentResolver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.res.AssetManager;
-import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.hardware.Camera;
 import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -43,28 +14,25 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
-import android.view.View;
 import android.view.Window;
 import android.view.ViewGroup.LayoutParams;
 
-import com.gamaray.arex.geo.GeoPoint;
-import com.gamaray.arex.gui.DrawWindow;
-import com.gamaray.arex.gui.Drawable;
+import com.gamaray.arex.context.AndroidARXContext;
+import com.gamaray.arex.gui.AndroidDrawWindow;
+import com.gamaray.arex.gui.AugmentedView;
+import com.gamaray.arex.gui.CameraView;
+import com.gamaray.arex.io.ARXHttpInputStream;
 import com.gamaray.arex.render3d.Matrix3D;
-import com.gamaray.arex.xml.Element;
 
 public class ARExplorer extends Activity implements SensorEventListener, LocationListener {
-    boolean fatalError = false;
-    String fatalErrorMsg;
+    private boolean fatalError = false;
+    private String fatalErrorMsg;
     Exception fatalErrorEx;
 
     CameraView cameraView;
@@ -72,8 +40,8 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
 
     static boolean initialized = false;
     static AndroidARXContext ctx;
-    static AndroidDrawWindow drawWindow;
-    static ARXView view;
+    private static AndroidDrawWindow drawWindow;
+    private static ARXView view;
     Thread downloadThread;
     Thread renderThread;
 
@@ -89,8 +57,8 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
     private List<Sensor> sensors;
     private Sensor sensorGrav, sensorMag;
     private LocationManager locationMgr;
-    boolean gpsEnabled = false;
-    int gpsUpdates = 0;
+    private boolean gpsEnabled = false;
+    private int gpsUpdates = 0;
 
     int rotationHistIdx = 0;
     Matrix3D rotationTmp = new Matrix3D();
@@ -145,8 +113,8 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
 
             if (!initialized) {
                 ctx = new AndroidARXContext(this);
-                ctx.downloadManager = new ARXDownload(ctx);
-                ctx.renderManager = new ARXRender(ctx);
+                ctx.setDownloadManager(new ARXDownload(ctx));
+                ctx.setRenderManager(new ARXRender(ctx));
                 drawWindow = new AndroidDrawWindow();
                 view = new ARXView(ctx);
 
@@ -182,14 +150,14 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             }
 
             try {
-                ctx.downloadManager.stop();
+                ctx.getDownloadManager().stop();
             } catch (Exception ignore) {
             }
             try {
-                ctx.renderManager.stop();
+                ctx.getRenderManager().stop();
             } catch (Exception ignore) {
             }
-            ARXHttpInputStream.killMode = true;
+            ARXHttpInputStream.setKillMode(true);
 
             if (fatalError) {
                 Log.d("gamaray", "CALLING FINISH");
@@ -207,7 +175,7 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
         try {
             killOnError();
 
-            ctx.appCtx = this;
+            ctx.setAppCtx(this);
             view.doLaunch();
             view.purgeEvents();
 
@@ -260,35 +228,35 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
                     ex2.printStackTrace();
                 }
 
-                synchronized (ctx.curLoc) {
+                synchronized (ctx.getCurLoc()) {
                     if (lastFix != null) {
-                        ctx.curLoc.lat = lastFix.getLatitude();
-                        ctx.curLoc.lon = lastFix.getLongitude();
-                        ctx.curLoc.alt = lastFix.getAltitude();
+                        ctx.getCurLoc().lat = lastFix.getLatitude();
+                        ctx.getCurLoc().lon = lastFix.getLongitude();
+                        ctx.getCurLoc().alt = lastFix.getAltitude();
                     } else {
-                        ctx.curLoc.lat = 45.0;
-                        ctx.curLoc.lon = -85.0;
-                        ctx.curLoc.alt = 0.0;
+                        ctx.getCurLoc().lat = 45.0;
+                        ctx.getCurLoc().lon = -85.0;
+                        ctx.getCurLoc().alt = 0.0;
                     }
                 }
 
-                GeomagneticField gmf = new GeomagneticField((float) ctx.curLoc.lat, (float) ctx.curLoc.lon,
-                        (float) ctx.curLoc.alt, System.currentTimeMillis());
+                GeomagneticField gmf = new GeomagneticField((float) ctx.getCurLoc().lat, (float) ctx.getCurLoc().lon,
+                        (float) ctx.getCurLoc().alt, System.currentTimeMillis());
 
                 angleY = Math.toRadians(-gmf.getDeclination());
                 m4.setTo((float) Math.cos(angleY), 0f, (float) Math.sin(angleY), 0f, 1f, 0f, (float) -Math.sin(angleY),
                         0f, (float) Math.cos(angleY));
-                ctx.declination = gmf.getDeclination();
+                ctx.setDeclination(gmf.getDeclination());
             } catch (Exception ex) {
                 Log.d("gamaray", "GPS Initialize Error", ex);
             }
 
-            ARXHttpInputStream.killMode = false;
+            ARXHttpInputStream.setKillMode(false);
 
-            downloadThread = new Thread(ctx.downloadManager);
+            downloadThread = new Thread(ctx.getDownloadManager());
             downloadThread.start();
 
-            renderThread = new Thread(ctx.renderManager);
+            renderThread = new Thread(ctx.getRenderManager());
             renderThread.start();
         } catch (Exception ex) {
             doError(ex);
@@ -306,12 +274,12 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
                 }
 
                 if (ctx != null) {
-                    if (ctx.downloadManager != null)
-                        ctx.downloadManager.stop();
-                    if (ctx.renderManager != null)
-                        ctx.renderManager.stop();
+                    if (ctx.getDownloadManager() != null)
+                        ctx.getDownloadManager().stop();
+                    if (ctx.getRenderManager() != null)
+                        ctx.getRenderManager().stop();
 
-                    ARXHttpInputStream.killMode = true;
+                    ARXHttpInputStream.setKillMode(true);
                 }
             } catch (Exception ignore) {
 
@@ -365,9 +333,9 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
 
             if (s.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
                 if (accuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW) {
-                    ctx.lowCompassAccuracy = true;
+                    ctx.setLowCompassAccuracy(true);
                 } else {
-                    ctx.lowCompassAccuracy = false;
+                    ctx.setLowCompassAccuracy(false);
                 }
             }
         } catch (Exception ex) {
@@ -417,8 +385,8 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             }
             rotationSmooth.multiply(1 / (float) rotationHist.length);
 
-            synchronized (ctx.rotationMatrix) {
-                ctx.rotationMatrix.setTo(rotationSmooth);
+            synchronized (ctx.getRotationMatrix()) {
+                ctx.getRotationMatrix().setTo(rotationSmooth);
             }
         } catch (Exception ex) {
             doError(ex);
@@ -477,10 +445,10 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             killOnError();
 
             if (LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
-                synchronized (ctx.curLoc) {
-                    ctx.curLoc.lat = location.getLatitude();
-                    ctx.curLoc.lon = location.getLongitude();
-                    ctx.curLoc.alt = location.getAltitude();
+                synchronized (ctx.getCurLoc()) {
+                    ctx.getCurLoc().lat = location.getLatitude();
+                    ctx.getCurLoc().lon = location.getLongitude();
+                    ctx.getCurLoc().alt = location.getAltitude();
                 }
 
                 gpsUpdates++;
@@ -489,572 +457,28 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             doError(ex);
         }
     }
-}
-
-class CameraView extends SurfaceView implements SurfaceHolder.Callback {
-    ARExplorer app;
-    SurfaceHolder holder;
-    Camera camera;
-
-    CameraView(Context context) {
-        super(context);
-
-        try {
-            app = (ARExplorer) context;
-
-            holder = getHolder();
-            holder.addCallback(this);
-            holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-        } catch (Exception ex) {
-
-        }
+    
+    public boolean isGpsEnabled() {
+        return gpsEnabled;
+    }
+    
+    public int getGpsUpdates() {
+        return gpsUpdates;
     }
 
-    public void surfaceCreated(SurfaceHolder holder) {
-        try {
-            if (camera != null) {
-                try {
-                    camera.stopPreview();
-                } catch (Exception ignore) {
-                }
-                try {
-                    camera.release();
-                } catch (Exception ignore) {
-                }
-                camera = null;
-            }
-
-            camera = Camera.open();
-            camera.setPreviewDisplay(holder);
-        } catch (Exception ex) {
-            try {
-                if (camera != null) {
-                    try {
-                        camera.stopPreview();
-                    } catch (Exception ignore) {
-                    }
-                    try {
-                        camera.release();
-                    } catch (Exception ignore) {
-                    }
-                    camera = null;
-                }
-            } catch (Exception ignore) {
-
-            }
-        }
+    public boolean isFatalError() {
+        return fatalError;
     }
-
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        try {
-            if (camera != null) {
-                try {
-                    camera.stopPreview();
-                } catch (Exception ignore) {
-                }
-                try {
-                    camera.release();
-                } catch (Exception ignore) {
-                }
-                camera = null;
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+    
+    public String getFatalErrorMsg() {
+        return fatalErrorMsg;
     }
-
-    public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
-        try {
-            camera.startPreview();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+    
+    public static AndroidDrawWindow getDrawWindow() {
+        return drawWindow;
     }
-}
-
-class AugmentedView extends View {
-    ARExplorer app;
-
-    public AugmentedView(Context context) {
-        super(context);
-
-        try {
-            app = (ARExplorer) context;
-
-            app.killOnError();
-        } catch (Exception ex) {
-            app.doError(ex);
-        }
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        try {
-            if (app.fatalError) {
-                Paint errPaint = new Paint();
-                errPaint.setColor(Color.RED);
-                errPaint.setTextSize(16);
-
-                canvas.drawText("ERROR: ", 10, 20, errPaint);
-                canvas.drawText("" + app.fatalErrorMsg, 10, 40, errPaint);
-
-                return;
-            }
-
-            app.killOnError();
-
-            app.drawWindow.width = canvas.getWidth();
-            app.drawWindow.height = canvas.getHeight() - app.TOOL_BAR_HEIGHT;
-            app.drawWindow.canvas = canvas;
-
-            if (!app.view.isInit()) {
-                app.view.init(app.drawWindow.width, app.drawWindow.height);
-            }
-
-            app.view.draw(app.drawWindow);
-        } catch (Exception ex) {
-            app.doError(ex);
-        }
-    }
-}
-
-class AndroidDrawWindow implements DrawWindow {
-    Canvas canvas;
-    int width, height;
-    Paint paint = new Paint();
-    Paint bmpPaint = new Paint();
-
-    public AndroidDrawWindow() {
-        paint.setTextSize(16);
-        paint.setAntiAlias(true);
-        paint.setColor(Color.BLUE);
-        paint.setStyle(Paint.Style.STROKE);
-    }
-
-    public int getWidth() {
-        return width;
-    }
-
-    public int getHeight() {
-        return height;
-    }
-
-    public void setFill(boolean fill) {
-        if (fill)
-            paint.setStyle(Paint.Style.FILL);
-        else
-            paint.setStyle(Paint.Style.STROKE);
-    }
-
-    public void setColor(int c) {
-        paint.setColor(c);
-    }
-
-    public void drawLine(float x1, float y1, float x2, float y2) {
-        canvas.drawLine(x1, y1, x2, y2, paint);
-    }
-
-    public void drawRectangle(float x, float y, float width, float height) {
-        canvas.drawRect(x, y, x + width, y + height, paint);
-    }
-
-    public void drawCircle(float x, float y, float radius) {
-        canvas.drawCircle(x, y, radius, paint);
-    }
-
-    public void drawText(float x, float y, String text) {
-        canvas.drawText(text, x, y, paint);
-    }
-
-    public void drawBitmap(com.gamaray.arex.gui.Bitmap bmp, float x, float y, float rotation, float scale) {
-        canvas.save();
-        canvas.translate(x + bmp.getWidth() / 2, y + bmp.getHeight() / 2);
-        canvas.rotate(rotation);
-        canvas.scale(scale, scale);
-        canvas.translate(-(bmp.getWidth() / 2), -(bmp.getHeight() / 2));
-        canvas.drawBitmap(((AndroidBitmap) bmp).bmp, 0, 0, bmpPaint);
-        canvas.restore();
-    }
-
-    public void drawBitmap(int[] bmp, float bmpX, float bmpY, int width, int height, float rotation, float scale) {
-        canvas.save();
-        canvas.translate(bmpX + width / 2, bmpY + height / 2);
-        canvas.rotate(rotation);
-        canvas.scale(scale, scale);
-        canvas.translate(-(width / 2), -(height / 2));
-        canvas.drawBitmap(bmp, 0, width, 0, 0, width, height, true, bmpPaint);
-        canvas.restore();
-    }
-
-    public void drawObject(Drawable obj, float x, float y, float rotation, float scale) {
-        canvas.save();
-        canvas.translate(x + obj.getWidth() / 2, y + obj.getHeight() / 2);
-        canvas.rotate(rotation);
-        canvas.scale(scale, scale);
-        canvas.translate(-(obj.getWidth() / 2), -(obj.getHeight() / 2));
-        obj.draw(this);
-        canvas.restore();
-    }
-
-    public float getTextWidth(String txt) {
-        return paint.measureText(txt);
-    }
-
-    public float getTextAscent() {
-        return -paint.ascent();
-    }
-
-    public float getTextDescent() {
-        return paint.descent();
-    }
-
-    public float getTextLeading() {
-        return 0;
-    }
-
-    public void setFontSize(float size) {
-        paint.setTextSize(size);
-    }
-}
-
-class AndroidARXContext implements ARXContext {
-    ARExplorer appCtx;
-
-    Random rand;
-
-    ARXDownload downloadManager;
-    ARXRender renderManager;
-
-    GeoPoint curLoc = new GeoPoint();
-    Matrix3D rotationMatrix = new Matrix3D();
-
-    boolean lowCompassAccuracy = false;
-    float declination = 0f;
-
-    public AndroidARXContext(Context appCtx) {
-        this.appCtx = (ARExplorer) appCtx;
-
-        rotationMatrix.setToIdentity();
-
-        int locationHash = 0;
-        try {
-            LocationManager locationMgr = (LocationManager) appCtx.getSystemService(appCtx.LOCATION_SERVICE);
-            Location lastFix = locationMgr.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if (lastFix == null)
-                lastFix = locationMgr.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-
-            if (lastFix != null)
-                locationHash = ("HASH_" + lastFix.getLatitude() + "_" + lastFix.getLongitude()).hashCode();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        rand = new Random(System.currentTimeMillis() + locationHash);
-    }
-
-    public boolean gpsEnabled() {
-        return appCtx.gpsEnabled;
-    }
-
-    public boolean gpsSignalReceived() {
-        return (appCtx.gpsUpdates > 0);
-    }
-
-    public ARXDownload getARXDownload() {
-        return downloadManager;
-    }
-
-    public ARXRender getARXRender() {
-        return renderManager;
-    }
-
-    public float getDeclination() {
-        return declination;
-    }
-
-    public boolean isCompassAccuracyLow() {
-        return lowCompassAccuracy;
-    }
-
-    public String getLaunchUrl() {
-        Intent intent = ((Activity) appCtx).getIntent();
-
-        if (intent.getAction().equals(intent.ACTION_VIEW)) {
-            return intent.getData().toString();
-        } else {
-            return "";
-        }
-    }
-
-    public void getRotationMatrix(Matrix3D dest) {
-        synchronized (rotationMatrix) {
-            dest.setTo(rotationMatrix);
-        }
-    }
-
-    public void getCurrentLocation(GeoPoint dest) {
-        synchronized (curLoc) {
-            dest.lat = curLoc.lat;
-            dest.lon = curLoc.lon;
-            dest.alt = curLoc.alt;
-        }
-    }
-
-    public com.gamaray.arex.gui.Bitmap createBitmap(InputStream is) throws Exception {
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        Bitmap bmp = BitmapFactory.decodeStream(is, null, options);
-
-        if (bmp == null)
-            throw new Exception("Error creating bitmap");
-
-        return new AndroidBitmap(bmp);
-    }
-
-    public com.gamaray.arex.xml.Element parseXML(InputStream is) throws Exception {
-        AndroidXMLHandler handler = new AndroidXMLHandler();
-
-        SAXParserFactory spf = null;
-        SAXParser sp = null;
-
-        spf = SAXParserFactory.newInstance();
-        if (spf != null) {
-            sp = spf.newSAXParser();
-            sp.parse(is, handler);
-        }
-
-        return handler.root;
-    }
-
-    public ARXHttpInputStream getHttpGETInputStream(String urlStr) throws Exception {
-        InputStream is = null;
-        HttpURLConnection conn = null;
-
-        if (urlStr.startsWith("gamaray://")) {
-            urlStr = "http://" + urlStr.substring(10, urlStr.length());
-            Log.d("gamaray", "urlStr=" + urlStr);
-        }
-
-        if (urlStr.startsWith("content://"))
-            return getContentInputStream(urlStr, null);
-
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setReadTimeout(10000);
-            conn.setConnectTimeout(10000);
-
-            is = conn.getInputStream();
-            ARXHttpInputStream arxis = new AndroidHttpInputStream(conn, is, conn.getContentLength());
-
-            return arxis;
-        } catch (Exception ex) {
-            try {
-                is.close();
-            } catch (Exception ignore) {
-            }
-            try {
-                conn.disconnect();
-            } catch (Exception ignore) {
-            }
-
-            throw ex;
-        }
-    }
-
-    public ARXHttpInputStream getHttpPOSTInputStream(String urlStr, String params) throws Exception {
-        InputStream is = null;
-        OutputStream os = null;
-        HttpURLConnection conn = null;
-
-        if (urlStr.startsWith("gamaray://")) {
-            urlStr = "http://" + urlStr.substring(10, urlStr.length());
-            Log.d("gamaray", "urlStr=" + urlStr);
-        }
-
-        if (urlStr.startsWith("content://"))
-            return getContentInputStream(urlStr, params);
-
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setReadTimeout(10000);
-            conn.setConnectTimeout(10000);
-
-            if (params != null) {
-                conn.setDoOutput(true);
-                os = conn.getOutputStream();
-                OutputStreamWriter wr = new OutputStreamWriter(os);
-                wr.write(params);
-                wr.close();
-            }
-
-            is = conn.getInputStream();
-            ARXHttpInputStream arxis = new AndroidHttpInputStream(conn, is, conn.getContentLength());
-
-            return arxis;
-        } catch (Exception ex) {
-            try {
-                is.close();
-            } catch (Exception ignore) {
-            }
-            try {
-                os.close();
-            } catch (Exception ignore) {
-            }
-            try {
-                conn.disconnect();
-            } catch (Exception ignore) {
-            }
-
-            if (conn != null && conn.getResponseCode() == 405) {
-                return getHttpGETInputStream(urlStr);
-            } else {
-                throw ex;
-            }
-        }
-    }
-
-    public ARXHttpInputStream getContentInputStream(String urlStr, String params) throws Exception {
-        ContentResolver cr = appCtx.getContentResolver();
-        Cursor cur = cr.query(Uri.parse(urlStr), null, params, null, null);
-
-        cur.moveToFirst();
-        int mode = cur.getInt(cur.getColumnIndex("MODE"));
-
-        if (mode == 1) {
-            String result = cur.getString(cur.getColumnIndex("RESULT"));
-            cur.deactivate();
-
-            return new ARXHttpInputStream(new ByteArrayInputStream(result.getBytes()), result.length());
-        } else {
-            cur.deactivate();
-
-            throw new Exception("Invalid content:// mode " + mode);
-        }
-    }
-
-    public void returnHttpInputStream(ARXHttpInputStream is) throws Exception {
-        if (is != null) {
-            is.close();
-        }
-    }
-
-    public InputStream getResourceInputStream(String name) throws Exception {
-        AssetManager mgr = appCtx.getAssets();
-
-        return mgr.open(name);
-    }
-
-    public void returnResourceInputStream(InputStream is) throws Exception {
-        if (is != null)
-            is.close();
-    }
-
-    public void playSound(String url) throws Exception {
-        // MediaPlayer mp = new MediaPlayer();
-        // mp.setDataSource("http://worldonefive.s3.amazonaws.com/raygun.wav");
-        // mp.prepare();
-        // mp.start();
-    }
-
-    public void showWebPage(String url) throws Exception {
-        appCtx.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-    }
-
-    public long getRandomLong() {
-        return rand.nextLong();
-    }
-
-    public double getRandomDouble() {
-        return rand.nextDouble();
-    }
-
-    public HashMap getPrefs() {
-        SharedPreferences settings = appCtx.getSharedPreferences("ARX_PREFS", 0);
-
-        return new HashMap(settings.getAll());
-    }
-
-    public void setPrefs(HashMap prefs) {
-        SharedPreferences settings = appCtx.getSharedPreferences("ARX_PREFS", 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.clear();
-
-        for (Iterator itr = prefs.keySet().iterator(); itr.hasNext();) {
-            String key = (String) itr.next();
-            editor.putString(key, (String) prefs.get(key));
-        }
-
-        editor.commit();
-    }
-}
-
-class AndroidHttpInputStream extends ARXHttpInputStream {
-    HttpURLConnection conn;
-
-    public AndroidHttpInputStream(HttpURLConnection conn, InputStream is, int contentLength) {
-        super(new BufferedInputStream(is), contentLength);
-
-        this.conn = conn;
-    }
-
-    public void close() throws IOException {
-        super.close();
-
-        conn.disconnect();
-    }
-}
-
-class AndroidXMLHandler extends DefaultHandler {
-    Element root = new Element();
-    Element cur;
-
-    public AndroidXMLHandler() {
-        root.parentElement = null;
-        root.isRoot = true;
-        cur = root;
-    }
-
-    public void startElement(String uri, String localName, String qName, Attributes attributes) {
-        Element newElem = new Element();
-        newElem.name = localName;
-        newElem.parentElement = cur;
-        for (int i = 0; i < attributes.getLength(); i++) {
-            newElem.attribs.put(attributes.getLocalName(i), attributes.getValue(i));
-        }
-
-        cur.childElements.add(newElem);
-        cur = newElem;
-    }
-
-    public void endElement(String uri, String localName, String qName) {
-        cur = cur.parentElement;
-    }
-
-    public void characters(char[] ch, int start, int length) {
-        if (cur.content == null)
-            cur.content = String.valueOf(ch, start, length);
-        else
-            cur.content += String.valueOf(ch, start, length);
-    }
-}
-
-class AndroidBitmap implements com.gamaray.arex.gui.Bitmap {
-    Bitmap bmp;
-
-    public AndroidBitmap(Bitmap bmp) {
-        this.bmp = bmp;
-    }
-
-    public float getWidth() {
-        return bmp.getWidth();
-    }
-
-    public float getHeight() {
-        return bmp.getHeight();
-    }
-
-    public void draw(DrawWindow dw) {
-        dw.drawBitmap(this, 0, 0, 0, 1);
+    
+    public static ARXView getView() {
+        return view;
     }
 }

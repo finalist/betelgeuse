@@ -10,7 +10,8 @@ import com.gamaray.arex.geo.GeoPoint;
 import com.gamaray.arex.gui.Bitmap;
 import com.gamaray.arex.io.ARXHttpInputStream;
 import com.gamaray.arex.render3d.Matrix3D;
-import com.gamaray.arex.xml.Element;
+import com.gamaray.arex.xml.NonRootElement;
+import com.gamaray.arex.xml.RootElement;
 
 public interface ARXContext {
     public ARXDownload getARXDownload();
@@ -25,7 +26,7 @@ public interface ARXContext {
 
     public Bitmap createBitmap(InputStream is) throws Exception;
 
-    public Element parseXML(InputStream is) throws Exception;
+    public RootElement parseXML(InputStream is) throws Exception;
 
     public ARXHttpInputStream getHttpGETInputStream(String url) throws Exception;
 

@@ -1,3 +1,20 @@
+/*
+    This file is part of betelgeuse.
+
+    betelgeuse is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    betelgeuse is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with betelgeuse.  If not, see <http://www.gnu.org/licenses/>.
+
+ */
 package com.gamaray.arex.xml;
 
 import java.util.ArrayList;
@@ -5,19 +22,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Element {
-    private boolean isRoot = false;
+public abstract class Element {
+
     private String name;
     private String content;
     private Map<String, String> attribs = new HashMap<String, String>();
 
-    private Element parentElement;
-    private List<Element> childElements = new ArrayList<Element>();
+    private List<NonRootElement> childElements = new ArrayList<NonRootElement>();
 
-    public Element getChildElement(String name) {
+
+	public NonRootElement getChildElement(String name) {
         // TODO: If this method is used a lot and if the order is not important,
         // it might be better to use a hashmap to store the childelements.
-        for (Element childElement : childElements) {
+        for (NonRootElement childElement : childElements) {
             if (childElement.getName().equals(name)) {
                 return childElement;
             }
@@ -31,7 +48,7 @@ public class Element {
     }
 
     public String getChildElementValue(String name, String defaultValue) {
-        Element e = (Element) getChildElement(name);
+        NonRootElement e = (NonRootElement) getChildElement(name);
         return e.getAttribValue(name, defaultValue);
     }
 
@@ -56,8 +73,9 @@ public class Element {
         return buf.toString();
     }
 
-    private void print(StringBuffer buf) {
-        if (!isRoot) {
+    
+    protected void print(StringBuffer buf) {
+        if (!isRoot()) {
             buf.append("<" + name + " ");
             if (attribs.size() > 0) {
                 for (String attribName : attribs.keySet()) {
@@ -74,33 +92,16 @@ public class Element {
             }
         }
 
-        for (Element childElement : childElements) {
+        for (NonRootElement childElement : childElements) {
             childElement.print(buf);
         }
 
-        if (!isRoot) {
+        if (!isRoot()) {
             buf.append("</" + name + ">\n");
         }
     }
-
-    public void setParentElement(Element parentElement) {
-        this.parentElement = parentElement;
-    }
-
-    public boolean isRoot() {
-        return isRoot;
-    }
-
-    public void setRoot(boolean isRoot) {
-        this.isRoot = isRoot;
-    }
-
     public void setName(String name) {
         this.name = name;
-    }
-
-    public Element getParentElement() {
-        return parentElement;
     }
 
     public String getAttribute(Object key) {
@@ -111,7 +112,7 @@ public class Element {
         return attribs.put(key, value);
     }
 
-    public void addChildElement(Element child) {
+    public void addChildElement(NonRootElement child) {
         childElements.add(child);
     }
 
@@ -127,11 +128,13 @@ public class Element {
         }
     }
 
-    public List<Element> getChildElements() {
+    public List<NonRootElement> getChildElements() {
         return childElements;
     }
 
     public String getName() {
         return name;
     }
+    
+	public abstract boolean isRoot();
 }

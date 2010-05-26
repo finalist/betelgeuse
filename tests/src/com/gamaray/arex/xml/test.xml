@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dimension version="1.0">
+ <name>Stefaan Dimension</name>
+ <relativeAltitude>true</relativeAltitude>
+ <refreshUrl>http://celstec1.appspot.com/locatory?p=flappie</refreshUrl>
+ <refreshTime><validFor>30000</validFor></refreshTime>
+ <refreshDistance><validWithinRange>10</validWithinRange></refreshDistance>
+ <assets>
+  <asset id="defaultCardImage">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/card_small.png</url>
+  </asset>
+  <asset id="cardIcon">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/card_pickedup.png</url>
+  </asset>
+  <asset id="dropOffZone">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/drop_point.png</url>
+  </asset>
+  <asset id="scoreClose">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score4.png</url>
+  </asset>
+  <asset id="scoreOpen">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score1.png</url>
+  </asset>
+  <asset id="scoreNumber_0">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-0.png</url>
+  </asset>
+  <asset id="scoreNumber_1">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-1.png</url>
+  </asset>
+  <asset id="scoreNumber_2">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-2.png</url>
+  </asset>
+  <asset id="scoreNumber_3">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-3.png</url>
+  </asset>
+  <asset id="scoreNumber_4">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-4.png</url>
+  </asset>
+  <asset id="scoreNumber_5">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-5.png</url>
+  </asset>
+  <asset id="scoreNumber_6">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-6.png</url>
+  </asset>
+  <asset id="scoreNumber_7">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-7.png</url>
+  </asset>
+  <asset id="scoreNumber_8">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-8.png</url>
+  </asset>
+  <asset id="scoreNumber_9">
+   <format>PNG</format>
+   <url>http://sharetec.celstec.org/mobileIm/score2-9.png</url>
+  </asset>
+ </assets>
+ <features>
+  <featureImg id="cl_CardLocation(8080)">
+   <assetId>defaultCardImage</assetId>
+   <location><lat>50.879161</lat><lon>5.959729</lon></location>
+   <anchor>CC</anchor>
+   <onPress>dimension: http://celstec1.appspot.com/locatory?p=flappie&amp;cardLocationClick=CardLocation(8080)</onPress>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+  <featureImg id="cl_CardLocation(8079)">
+   <assetId>defaultCardImage</assetId>
+   <location><lat>50.878308</lat><lon>5.95783</lon></location>
+   <anchor>CC</anchor>
+   <onPress>dimension: http://celstec1.appspot.com/locatory?p=flappie&amp;cardLocationClick=CardLocation(8079)</onPress>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+  <featureImg id="cl_CardLocation(10055)">
+   <assetId>defaultCardImage</assetId>
+   <location><lat>50.877832</lat><lon>5.961252</lon></location>
+   <anchor>CC</anchor>
+   <onPress>dimension: http://celstec1.appspot.com/locatory?p=flappie&amp;cardLocationClick=CardLocation(10055)</onPress>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+  <featureImg id="cl_CardLocation(10056)">
+   <assetId>defaultCardImage</assetId>
+   <location><lat>50.8773</lat><lon>5.958409</lon></location>
+   <anchor>CC</anchor>
+   <onPress>dimension: http://celstec1.appspot.com/locatory?p=flappie&amp;cardLocationClick=CardLocation(10056)</onPress>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+  <featureImg id="cl_CardLocation(10057)">
+   <assetId>defaultCardImage</assetId>
+   <location><lat>50.87753</lat><lon>5.959525</lon></location>
+   <anchor>CC</anchor>
+   <onPress>dimension: http://celstec1.appspot.com/locatory?p=flappie&amp;cardLocationClick=CardLocation(10057)</onPress>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+  <featureImg id="cl_CardLocation(8081)">
+   <assetId>defaultCardImage</assetId>
+   <location><lat>50.878687</lat><lon>5.960716</lon></location>
+   <anchor>CC</anchor>
+   <onPress>dimension: http://celstec1.appspot.com/locatory?p=flappie&amp;cardLocationClick=CardLocation(8081)</onPress>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+  <featureImg id="dropzone_CardDropOffZone(10052)">
+   <assetId>dropOffZone</assetId>
+   <location><lat>50.878139</lat><lon>5.958519</lon></location>
+   <anchor>CC</anchor>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+  <featureImg id="dropzone_CardDropOffZone(10053)">
+   <assetId>dropOffZone</assetId>
+   <location><lat>50.877765</lat><lon>5.9593</lon></location>
+   <anchor>CC</anchor>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+  <featureImg id="dropzone_CardDropOffZone(10054)">
+   <assetId>dropOffZone</assetId>
+   <location><lat>50.878831</lat><lon>5.957701</lon></location>
+   <anchor>CC</anchor>
+   <xLoc>0</xLoc>
+   <yLoc>0</yLoc>
+   <zLoc>0</zLoc>
+   <showInRadar>0</showInRadar>
+  </featureImg>
+ </features>
+ <overlays>
+  <overlayImg id="scoreCloseOI">
+   <assetId>scoreClose</assetId>
+   <x>470</x>
+   <y>10</y>
+   <anchor>TR</anchor>
+  </overlayImg>
+  <overlayImg id="scoreOpenOI">
+   <assetId>scoreOpen</assetId>
+   <x>450</x>
+   <y>10</y>
+   <anchor>TR</anchor>
+  </overlayImg>
+  <overlayImg id="scoreNumber_0OI">
+   <assetId>scoreNumber_0</assetId>
+   <x>462</x>
+   <y>10</y>
+   <anchor>TR</anchor>
+  </overlayImg>
+ </overlays>
+</dimension>

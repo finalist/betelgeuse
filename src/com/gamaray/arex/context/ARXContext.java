@@ -1,7 +1,6 @@
 package com.gamaray.arex.context;
 
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
 
 import com.gamaray.arex.ARXDownload;

@@ -16,6 +16,7 @@ public class ARXHttpInputStream extends InputStream {
     }
 
     public float pctDownloadComplete() {
+        //TODO:Division by zero waiting to happen.
         float pct = (totalBytesRead / (float) contentLength);
 
         if (pct > 100f)

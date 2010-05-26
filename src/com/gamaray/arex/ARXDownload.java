@@ -5,7 +5,8 @@ import java.util.HashMap;
 import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.format3d.GAMA3DHandler;
 import com.gamaray.arex.io.ARXHttpInputStream;
-import com.gamaray.arex.xml.Element;
+import com.gamaray.arex.xml.NonRootElement;
+import com.gamaray.arex.xml.RootElement;
 
 public class ARXDownload implements Runnable {
     public static int NONE = 0, GAMADIM = 1, GAMA3D = 2, OBJ = 3, PNG = 4, JPG = 4;
@@ -143,7 +144,7 @@ public class ARXDownload implements Runnable {
             } else if (request.format == GAMADIM) {
                 is = ctx.getHttpPOSTInputStream(request.url, request.params);
 
-                Element root = ctx.parseXML(is);
+                RootElement root = ctx.parseXML(is);
 
                 Layer layer = new Layer();
                 layer.load(root);

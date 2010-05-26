@@ -6,6 +6,7 @@ import java.util.HashMap;
 import com.gamaray.arex.geo.GeoPoint;
 import com.gamaray.arex.geo.GeoUtil;
 import com.gamaray.arex.xml.Element;
+import com.gamaray.arex.xml.NonRootElement;
 
 public class Layer {
     String xmlVersion;
@@ -80,7 +81,7 @@ public class Layer {
     }
 
     public void load(Element root) throws Exception {
-        Element layerElem = root.getChildElement("dimension");
+        NonRootElement layerElem = root.getChildElement("dimension");
 
         xmlVersion = layerElem.getAttribValue("version");
         if (xmlVersion == null)
@@ -105,7 +106,7 @@ public class Layer {
         }
 
         // Sound
-        Element soundElem = layerElem.getChildElement("playSound");
+        NonRootElement soundElem = layerElem.getChildElement("playSound");
         if (soundElem != null)
             xmlSoundUrl = soundElem.getChildElementValue("url");
 
@@ -115,7 +116,7 @@ public class Layer {
 
         // Refresh Seconds
         xmlHasRefreshTime = false;
-        Element refreshTimeElem = layerElem.getChildElement("refreshTime");
+        NonRootElement refreshTimeElem = layerElem.getChildElement("refreshTime");
         if (refreshTimeElem != null) {
             xmlValidFor = Integer.parseInt(refreshTimeElem.getChildElementValue("validFor", "30000"));
             xmlWaitForAssets = Boolean.parseBoolean(refreshTimeElem.getChildElementValue("waitForAssets", "true"));
@@ -124,7 +125,7 @@ public class Layer {
 
         // Refresh Meters
         xmlHasRefreshDistance = false;
-        Element refreshDistanceElem = layerElem.getChildElement("refreshDistance");
+        NonRootElement refreshDistanceElem = layerElem.getChildElement("refreshDistance");
         if (refreshDistanceElem != null) {
             xmlValidWithinRange = Float
                     .parseFloat(refreshDistanceElem.getChildElementValue("validWithinRange", "1000"));
@@ -132,10 +133,10 @@ public class Layer {
         }
 
         // Locations
-        Element refptsElem = layerElem.getChildElement("locations");
+        NonRootElement refptsElem = layerElem.getChildElement("locations");
         if (refptsElem != null) {
             for (int i = 0; i < refptsElem.getChildElements().size(); i++) {
-                Element refptElem = (Element) refptsElem.getChildElements().get(i);
+                NonRootElement refptElem = (NonRootElement) refptsElem.getChildElements().get(i);
 
                 if (refptElem.getName().equals("location")) {
                     GeoPoint refpt = new GeoPoint();
@@ -153,10 +154,10 @@ public class Layer {
         }
 
         // Assets
-        Element assetsElem = layerElem.getChildElement("assets");
+        NonRootElement assetsElem = layerElem.getChildElement("assets");
         if (assetsElem != null) {
             for (int i = 0; i < assetsElem.getChildElements().size(); i++) {
-                Element assetElem = (Element) assetsElem.getChildElements().get(i);
+                NonRootElement assetElem = (NonRootElement) assetsElem.getChildElements().get(i);
 
                 if (assetElem.getName().equals("asset")) {
                     Asset das = new Asset();
@@ -185,10 +186,10 @@ public class Layer {
         }
 
         // Placemarks
-        Element placemarksElem = layerElem.getChildElement("features");
+        NonRootElement placemarksElem = layerElem.getChildElement("features");
         if (placemarksElem != null) {
             for (int i = 0; i < placemarksElem.getChildElements().size(); i++) {
-                Element pmElem = (Element) placemarksElem.getChildElements().get(i);
+                NonRootElement pmElem = (NonRootElement) placemarksElem.getChildElements().get(i);
                 Placemark pm = null;
 
                 if (pmElem.getName().equals("feature3d")) {
@@ -203,7 +204,7 @@ public class Layer {
                     pm.xmlId = pmElem.getAttribValue("id", "AUTO_ID_" + (idCounter++));
                     pm.xmlLocationId = pmElem.getChildElementValue("locationId");
                     if (pm.xmlLocationId == null) {
-                        Element locElem = pmElem.getChildElement("location");
+                        NonRootElement locElem = pmElem.getChildElement("location");
 
                         if (locElem == null)
                             throw new Exception("No location in feature '" + pm.xmlId + "'");
@@ -266,10 +267,10 @@ public class Layer {
         }
 
         // Overlays
-        Element overlaysElem = layerElem.getChildElement("overlays");
+        NonRootElement overlaysElem = layerElem.getChildElement("overlays");
         if (overlaysElem != null) {
             for (int i = 0; i < overlaysElem.getChildElements().size(); i++) {
-                Element ovlElem = (Element) overlaysElem.getChildElements().get(i);
+                NonRootElement ovlElem = (NonRootElement) overlaysElem.getChildElements().get(i);
                 Overlay ovl = null;
 
                 if (ovlElem.getName().equals("overlayImg")) {

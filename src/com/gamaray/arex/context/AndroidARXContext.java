@@ -107,7 +107,6 @@ public class AndroidARXContext implements ARXContext {
         }
     }
 
-    @Override
     public void getRotationMatrix(Matrix3D dest) {
         // TODO:very odd seems to be a setter rather than a getter
         synchronized (rotationMatrix) {
@@ -137,7 +136,7 @@ public class AndroidARXContext implements ARXContext {
         return new AndroidBitmap(bmp);
     }
 
-    public com.gamaray.arex.xml.Element parseXML(InputStream is) throws Exception {
+    public com.gamaray.arex.xml.RootElement parseXML(InputStream is) throws Exception {
         AndroidXMLHandler handler = new AndroidXMLHandler();
 
         SAXParserFactory spf = null;
@@ -296,7 +295,6 @@ public class AndroidARXContext implements ARXContext {
         return rand.nextDouble();
     }
 
-    @Override
     public Map<String,Object> getPrefs() {
         SharedPreferences settings = appCtx.getSharedPreferences("ARX_PREFS", 0);
 

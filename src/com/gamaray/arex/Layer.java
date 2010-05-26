@@ -5,12 +5,17 @@ import java.util.HashMap;
 
 import com.gamaray.arex.geo.GeoPoint;
 import com.gamaray.arex.geo.GeoUtil;
+import com.gamaray.arex.model.Dimension;
+import com.gamaray.arex.model.XML2Dimension;
 import com.gamaray.arex.xml.Element;
 import com.gamaray.arex.xml.NonRootElement;
 
 public class Layer {
-    String xmlVersion;
-    String xmlName;
+
+	private Dimension dim;
+	
+	String xmlVersion;
+    // String xmlName;
     String xmlDescription;
     String xmlRefreshUrl;
     String xmlSoundUrl;
@@ -46,8 +51,11 @@ public class Layer {
 
     int idCounter = 0;
 
+    public Dimension getDim() {
+		return this.dim;
+	}
+    
     public Layer() {
-        xmlName = "NO_NAME";
         xmlDescription = "...";
 
         xmlHasRefreshTime = false;
@@ -95,7 +103,9 @@ public class Layer {
     }
 
     public void load_v1_0(Element layerElem) throws Exception {
-        xmlName = layerElem.getChildElementValue("name", "NO_NAME");
+    	
+    	this.dim = new XML2Dimension().buildDimension(layerElem);
+
         xmlRefreshUrl = layerElem.getChildElementValue("refreshUrl");
 
         // Radar range

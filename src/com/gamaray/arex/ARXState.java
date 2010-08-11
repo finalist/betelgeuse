@@ -2,6 +2,8 @@ package com.gamaray.arex;
 
 import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.geo.GeoPoint;
+import com.gamaray.arex.loader.DownloadJobRequest;
+import com.gamaray.arex.loader.DownloadJobResult;
 
 public class ARXState {
     public static int NOT_STARTED = 0; // No result ready, job not submitted
@@ -34,13 +36,8 @@ public class ARXState {
         boolean evtHandled = false;
 
         if (xmlOnPress.startsWith("refresh")) {
-            DownloadJobRequest request = new DownloadJobRequest();
-            request.format = ARXDownload.GAMADIM;
-            request.url = layer.xmlRefreshUrl;
-            request.cacheable = false;
-            request.params = getParams("refreshOnPress", xmlId);
+            DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM,layer.xmlRefreshUrl,getParams("refreshOnPress", xmlId),false);
             downloadJobId = ctx.getARXDownload().submitJob(request);
-
             nextLayerStatus = ARXState.JOB_SUBMITTED;
             evtHandled = true;
         } else if (xmlOnPress.startsWith("webpage")) {
@@ -54,14 +51,10 @@ public class ARXState {
 
             evtHandled = true;
         } else if (xmlOnPress.startsWith("dimension")) {
-            DownloadJobRequest request = new DownloadJobRequest();
-            request.format = ARXDownload.GAMADIM;
-            request.url = ARXUtil.parseAction(xmlOnPress);
-            request.cacheable = false;
-            request.params = getParams("init", "NULL");
+            DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, ARXUtil.parseAction(xmlOnPress), getParams("init", "NULL"), false);
             downloadJobId = ctx.getARXDownload().submitJob(request);
 
-            launchUrl = request.url;
+            launchUrl = request.getUrl();
 
             nextLayerStatus = ARXState.JOB_SUBMITTED;
             evtHandled = true;

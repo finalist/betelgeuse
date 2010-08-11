@@ -6,27 +6,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.app.Activity;
+import android.content.Context;
 import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
-import android.view.Window;
 import android.view.ViewGroup.LayoutParams;
+import android.view.Window;
 
 import com.gamaray.arex.context.AndroidARXContext;
 import com.gamaray.arex.gui.AndroidDrawWindow;
 import com.gamaray.arex.gui.AugmentedView;
 import com.gamaray.arex.gui.CameraView;
+import com.gamaray.arex.gui.MenuItem;
 import com.gamaray.arex.io.ARXHttpInputStream;
 import com.gamaray.arex.render3d.Matrix3D;
 
@@ -44,6 +47,7 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
     private static ARXView view;
     Thread downloadThread;
     Thread renderThread;
+    private PowerManager.WakeLock wakelock; 
 
     public static final int TOOL_BAR_HEIGHT = 26;
 
@@ -56,7 +60,10 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
     private SensorManager sensorMgr;
     private List<Sensor> sensors;
     private Sensor sensorGrav, sensorMag;
-    private LocationManager locationMgr;
+
+    
+//    private LocationManager locationMgr;
+    private String currentLocationProvider;
     private boolean gpsEnabled = false;
     private int gpsUpdates = 0;
 
@@ -69,6 +76,9 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
     Matrix3D m2 = new Matrix3D();
     Matrix3D m3 = new Matrix3D();
     Matrix3D m4 = new Matrix3D();
+    
+    List<MenuItem> menuArray = new ArrayList<MenuItem>();
+
 
     public void doError(Exception ex1) {
         if (!fatalError) {
@@ -104,7 +114,6 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
 
         try {
             killOnError();
-
             requestWindowFeature(Window.FEATURE_NO_TITLE);
             cameraView = new CameraView(this);
             augmentedView = new AugmentedView(this);
@@ -113,8 +122,6 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
 
             if (!initialized) {
                 ctx = new AndroidARXContext(this);
-                ctx.setDownloadManager(new ARXDownload(ctx));
-                ctx.setRenderManager(new ARXRender(ctx));
                 drawWindow = new AndroidDrawWindow();
                 view = new ARXView(ctx);
 
@@ -129,6 +136,11 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
     protected void onPause() {
         super.onPause();
 
+        if (wakelock!=null){
+            wakelock.release();
+        }
+        
+        
         try {
             try {
                 sensorMgr.unregisterListener(this, sensorGrav);
@@ -140,15 +152,8 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             }
             sensorMgr = null;
 
-            try {
-                locationMgr.removeUpdates(this);
-            } catch (Exception ignore) {
-            }
-            try {
-                locationMgr = null;
-            } catch (Exception ignore) {
-            }
-
+            unregisterLocationProvider();
+            
             try {
                 ctx.getDownloadManager().stop();
             } catch (Exception ignore) {
@@ -214,39 +219,16 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             sensorMgr.registerListener(this, sensorMag, SENSOR_DELAY_FASTEST);
 
             try {
-                locationMgr = (LocationManager) getSystemService(LOCATION_SERVICE);
-                locationMgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 100, 1, this);
-
-                gpsEnabled = locationMgr.isProviderEnabled(LocationManager.GPS_PROVIDER);
-
-                Location lastFix = null;
-                try {
-                    lastFix = locationMgr.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                    if (lastFix == null)
-                        lastFix = locationMgr.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                } catch (Exception ex2) {
-                    ex2.printStackTrace();
+                
+                if (wakelock==null){
+                    PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                    wakelock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE, "ARExplorer");
                 }
+                wakelock.acquire();
 
-                synchronized (ctx.getCurLoc()) {
-                    if (lastFix != null) {
-                        ctx.getCurLoc().lat = lastFix.getLatitude();
-                        ctx.getCurLoc().lon = lastFix.getLongitude();
-                        ctx.getCurLoc().alt = lastFix.getAltitude();
-                    } else {
-                        ctx.getCurLoc().lat = 45.0;
-                        ctx.getCurLoc().lon = -85.0;
-                        ctx.getCurLoc().alt = 0.0;
-                    }
-                }
-
-                GeomagneticField gmf = new GeomagneticField((float) ctx.getCurLoc().lat, (float) ctx.getCurLoc().lon,
-                        (float) ctx.getCurLoc().alt, System.currentTimeMillis());
-
-                angleY = Math.toRadians(-gmf.getDeclination());
-                m4.setTo((float) Math.cos(angleY), 0f, (float) Math.sin(angleY), 0f, 1f, 0f, (float) -Math.sin(angleY),
-                        0f, (float) Math.cos(angleY));
-                ctx.setDeclination(gmf.getDeclination());
+                
+                updateLocationProvider();
+            
             } catch (Exception ex) {
                 Log.d("gamaray", "GPS Initialize Error", ex);
             }
@@ -268,11 +250,8 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
                     sensorMgr = null;
                 }
 
-                if (locationMgr != null) {
-                    locationMgr.removeUpdates(this);
-                    locationMgr = null;
-                }
-
+                unregisterLocationProvider();
+                
                 if (ctx != null) {
                     if (ctx.getDownloadManager() != null)
                         ctx.getDownloadManager().stop();
@@ -286,8 +265,55 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             }
         }
     }
+    
+    private void unregisterLocationProvider(){
+        if (currentLocationProvider != null) {
+            LocationManager locationMgr = (LocationManager) getSystemService(LOCATION_SERVICE);            
+            locationMgr.removeUpdates(this);
+            currentLocationProvider = null;
+        }
+    }
+    
+    private void updateLocationProvider(){
+        LocationManager locationMgr = (LocationManager) getSystemService(LOCATION_SERVICE);
+        
+        Criteria criteria=new Criteria();
+        criteria.setAccuracy(Criteria.ACCURACY_FINE);
+        
+        
+        
+        String newProvider=locationMgr.getBestProvider(criteria, true);
+        if (!newProvider.equals(currentLocationProvider)){
+            locationMgr.removeUpdates(this);
+            locationMgr.requestLocationUpdates(newProvider, 100, 1, this);
+            currentLocationProvider=newProvider;
+        }
 
-    ArrayList menuArray = new ArrayList();
+        gpsEnabled = currentLocationProvider.equals(LocationManager.GPS_PROVIDER);
+
+        Location lastFix = locationMgr.getLastKnownLocation(currentLocationProvider);
+
+        synchronized (ctx.getCurLoc()) {
+            if (lastFix != null) {
+                ctx.getCurLoc().lat = lastFix.getLatitude();
+                ctx.getCurLoc().lon = lastFix.getLongitude();
+                ctx.getCurLoc().alt = lastFix.getAltitude();
+            } else {
+                ctx.getCurLoc().lat = 45.0;
+                ctx.getCurLoc().lon = -85.0;
+                ctx.getCurLoc().alt = 0.0;
+            }
+        }
+
+        GeomagneticField gmf = new GeomagneticField((float) ctx.getCurLoc().lat, (float) ctx.getCurLoc().lon,
+                (float) ctx.getCurLoc().alt, System.currentTimeMillis());
+
+        double angleY = Math.toRadians(-gmf.getDeclination());
+        m4.setTo((float) Math.cos(angleY), 0f, (float) Math.sin(angleY), 0f, 1f, 0f, (float) -Math.sin(angleY),
+                0f, (float) Math.cos(angleY));
+        ctx.setDeclination(gmf.getDeclination());   
+    }
+    
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
@@ -313,7 +339,7 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(android.view.MenuItem item) {
         try {
             killOnError();
 
@@ -429,39 +455,40 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
     }
 
     public void onProviderDisabled(String provider) {
-        gpsEnabled = locationMgr.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        if (provider.equals(currentLocationProvider)){
+            updateLocationProvider();
+        }
     }
 
     public void onProviderEnabled(String provider) {
-        gpsEnabled = locationMgr.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        updateLocationProvider();
     }
 
     public void onStatusChanged(String provider, int status, Bundle extras) {
 
     }
 
+    @Override
     public void onLocationChanged(Location location) {
         try {
             killOnError();
-
-            if (LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
-                synchronized (ctx.getCurLoc()) {
-                    ctx.getCurLoc().lat = location.getLatitude();
-                    ctx.getCurLoc().lon = location.getLongitude();
-                    ctx.getCurLoc().alt = location.getAltitude();
+            synchronized (ctx.getCurLoc()) {
+                ctx.getCurLoc().lat = location.getLatitude();
+                ctx.getCurLoc().lon = location.getLongitude();
+                ctx.getCurLoc().alt = location.getAltitude();
+                if (location.getProvider().equals(LocationManager.GPS_PROVIDER)){
+                    gpsUpdates++;
                 }
-
-                gpsUpdates++;
             }
         } catch (Exception ex) {
             doError(ex);
         }
     }
-    
+
     public boolean isGpsEnabled() {
         return gpsEnabled;
     }
-    
+
     public int getGpsUpdates() {
         return gpsUpdates;
     }
@@ -469,15 +496,15 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
     public boolean isFatalError() {
         return fatalError;
     }
-    
+
     public String getFatalErrorMsg() {
         return fatalErrorMsg;
     }
-    
+
     public static AndroidDrawWindow getDrawWindow() {
         return drawWindow;
     }
-    
+
     public static ARXView getView() {
         return view;
     }

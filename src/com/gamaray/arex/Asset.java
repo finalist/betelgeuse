@@ -1,5 +1,7 @@
 package com.gamaray.arex;
 
+import com.gamaray.arex.loader.DownloadJobResult;
+
 public class Asset {
     String xmlId;
     String xmlName;

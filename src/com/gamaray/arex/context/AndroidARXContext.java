@@ -34,6 +34,7 @@ import com.gamaray.arex.geo.GeoPoint;
 import com.gamaray.arex.gui.AndroidBitmap;
 import com.gamaray.arex.io.ARXHttpInputStream;
 import com.gamaray.arex.io.AndroidHttpInputStream;
+import com.gamaray.arex.loader.FlushedInputStream;
 import com.gamaray.arex.render3d.Matrix3D;
 import com.gamaray.arex.xml.AndroidXMLHandler;
 
@@ -43,8 +44,8 @@ public class AndroidARXContext implements ARXContext {
 
     private Random rand;
 
-    private ARXDownload downloadManager;
-    private ARXRender renderManager;
+    private final ARXDownload downloadManager;
+    private final ARXRender renderManager;
 
     private GeoPoint curLoc = new GeoPoint();
     private Matrix3D rotationMatrix = new Matrix3D();
@@ -54,6 +55,8 @@ public class AndroidARXContext implements ARXContext {
 
     public AndroidARXContext(Context appCtx) {
         this.appCtx = (ARExplorer) appCtx;
+        downloadManager = new ARXDownload(this);
+        renderManager = new ARXRender(this);
 
         rotationMatrix.setToIdentity();
 
@@ -107,6 +110,7 @@ public class AndroidARXContext implements ARXContext {
         }
     }
 
+    @Override
     public void getRotationMatrix(Matrix3D dest) {
         // TODO:very odd seems to be a setter rather than a getter
         synchronized (rotationMatrix) {
@@ -127,8 +131,7 @@ public class AndroidARXContext implements ARXContext {
     }
 
     public com.gamaray.arex.gui.Bitmap createBitmap(InputStream is) throws Exception {
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        Bitmap bmp = BitmapFactory.decodeStream(is, null, options);
+        Bitmap bmp = BitmapFactory.decodeStream(new FlushedInputStream(is), null, null);
 
         if (bmp == null) {
             throw new Exception("Error creating bitmap");
@@ -136,7 +139,7 @@ public class AndroidARXContext implements ARXContext {
         return new AndroidBitmap(bmp);
     }
 
-    public com.gamaray.arex.xml.RootElement parseXML(InputStream is) throws Exception {
+    public com.gamaray.arex.xml.Element parseXML(InputStream is) throws Exception {
         AndroidXMLHandler handler = new AndroidXMLHandler();
 
         SAXParserFactory spf = null;
@@ -259,12 +262,6 @@ public class AndroidARXContext implements ARXContext {
         }
     }
 
-    public void returnHttpInputStream(ARXHttpInputStream is) throws Exception {
-        if (is != null) {
-            is.close();
-        }
-    }
-
     public InputStream getResourceInputStream(String name) throws Exception {
         AssetManager mgr = appCtx.getAssets();
 
@@ -295,10 +292,11 @@ public class AndroidARXContext implements ARXContext {
         return rand.nextDouble();
     }
 
-    public Map<String,Object> getPrefs() {
+    @Override
+    public Map<String, Object> getPrefs() {
         SharedPreferences settings = appCtx.getSharedPreferences("ARX_PREFS", 0);
 
-        return new HashMap<String,Object>(settings.getAll());
+        return new HashMap<String, Object>(settings.getAll());
     }
 
     public void setPrefs(Map<String, Object> prefs) {
@@ -307,7 +305,7 @@ public class AndroidARXContext implements ARXContext {
         editor.clear();
 
         for (String key : prefs.keySet()) {
-            if (prefs.get(key)!=null){
+            if (prefs.get(key) != null) {
                 editor.putString(key, prefs.get(key).toString());
             }
         }
@@ -315,13 +313,6 @@ public class AndroidARXContext implements ARXContext {
         editor.commit();
     }
 
-    public void setDownloadManager(ARXDownload downloadManager) {
-        this.downloadManager = downloadManager;
-    }
-
-    public void setRenderManager(ARXRender renderManager) {
-        this.renderManager = renderManager;
-    }
 
     public ARXDownload getDownloadManager() {
         return downloadManager;

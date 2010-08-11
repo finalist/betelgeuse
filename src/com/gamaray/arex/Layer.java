@@ -1,21 +1,28 @@
 package com.gamaray.arex;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.gamaray.arex.geo.GeoPoint;
 import com.gamaray.arex.geo.GeoUtil;
 import com.gamaray.arex.model.Dimension;
-import com.gamaray.arex.model.XML2Dimension;
+import com.gamaray.arex.model.Feature;
+import com.gamaray.arex.model.Feature3D;
+import com.gamaray.arex.model.FeatureImg;
+import com.gamaray.arex.model.FeatureTxt;
+import com.gamaray.arex.model.Location;
 import com.gamaray.arex.xml.Element;
-import com.gamaray.arex.xml.NonRootElement;
 
 public class Layer {
-
-	private Dimension dim;
-	
-	String xmlVersion;
-    // String xmlName;
+    
+    
+    private String xmlVersion;
+    String xmlName;
     String xmlDescription;
     String xmlRefreshUrl;
     String xmlSoundUrl;
@@ -37,25 +44,33 @@ public class Layer {
     long assetDownloadTime;
     boolean distancesVisible;
 
-    ArrayList assets = new ArrayList();
-    ArrayList placemarks = new ArrayList();
-    ArrayList overlays = new ArrayList();
-    ArrayList refPoints = new ArrayList();
-    ArrayList animations = new ArrayList();
+    private Map<String, Asset> assetMap = new HashMap<String, Asset>();
 
-    HashMap assetMap = new HashMap();
-    HashMap placemarkMap = new HashMap();
-    HashMap overlayMap = new HashMap();
-    HashMap refPointMap = new HashMap();
-    HashMap idMap = new HashMap();
+    private List<Placemark> zOrderedPlacemarks;
+    private Map<String, Placemark> placemarkMap = new HashMap<String, Placemark>();
 
-    int idCounter = 0;
+    Map<String, Overlay> overlayMap = new HashMap<String, Overlay>();
 
-    public Dimension getDim() {
-		return this.dim;
-	}
+    private List<GeoPoint> refPoints = new ArrayList<GeoPoint>();
+    // ArrayList animations = new ArrayList();
+
+    private Map<String, GeoPoint> refPointMap = new HashMap<String, GeoPoint>();
+    private Map<String, String> idMap = new HashMap<String, String>();
+
+    private static final Comparator<Placemark> Z_ORDER_COMPARATOR= new Comparator<Placemark>() {
+        
+        @Override
+        public int compare(Placemark leftPm, Placemark rightPm) {
+
+            return Float.compare(leftPm.centerMark.z, rightPm.centerMark.z);
+        }
+    };
+
     
+    private int idCounter = 0;
+
     public Layer() {
+        xmlName = "NO_NAME";
         xmlDescription = "...";
 
         xmlHasRefreshTime = false;
@@ -63,6 +78,11 @@ public class Layer {
         xmlRadarAvailable = true;
         allAssetsDownloaded = false;
         distancesVisible = false;
+    }
+
+    public Layer(Dimension dimension) throws Exception {
+        super();
+        load_v1_0(dimension);
     }
 
     public boolean refreshOnDistance(GeoPoint curFix) {
@@ -89,7 +109,7 @@ public class Layer {
     }
 
     public void load(Element root) throws Exception {
-        NonRootElement layerElem = root.getChildElement("dimension");
+        Element layerElem = root.getChildElement("dimension");
 
         xmlVersion = layerElem.getAttribValue("version");
         if (xmlVersion == null)
@@ -102,10 +122,214 @@ public class Layer {
         }
     }
 
-    public void load_v1_0(Element layerElem) throws Exception {
-    	
-    	this.dim = new XML2Dimension().buildDimension(layerElem);
+    private void load_v1_0(Dimension dimension) throws Exception {
+        xmlName = dimension.getName();
+        xmlRefreshUrl = dimension.getRefreshUrl();
 
+        // Radar range
+        xmlHasRadarRange = false;
+        if (dimension.getRadarRange() != null) {
+            xmlRadarRange = dimension.getRadarRange();
+            xmlHasRadarRange = true;
+        }
+
+        // Sound
+        xmlSoundUrl = dimension.getPlaySoundUrl();
+
+        xmlRelativeAltitude = (Boolean) defaultIfNull(dimension.getRelativeAltitude(), true);
+
+        xmlRadarAvailable = (Boolean) defaultIfNull(dimension.getRadarAvailable(), true);
+
+        // Refresh Seconds
+        xmlHasRefreshTime = dimension.getRefreshTime() != null;
+        xmlValidFor = (Integer) defaultIfNull(dimension.getRefreshTime(), 3000);
+
+        xmlWaitForAssets = (Boolean) defaultIfNull(dimension.getWaitForAssets(), true);
+
+        xmlValidWithinRange = (Integer) defaultIfNull(dimension.getRefreshDistance(), 1000);
+
+        // Locations
+        for (Location location : dimension.getLocations()) {
+            GeoPoint refpt = new GeoPoint();
+
+            String locId = generateIdIfNecessary(location.getId());
+            refpt.lat = location.getLat();
+            refpt.lon = location.getLon();
+            refpt.alt = location.getAlt();
+
+            refPoints.add(refpt);
+            refPointMap.put(locId, refpt);
+            putId(locId);
+
+        }
+
+        for (com.gamaray.arex.model.Asset asset : dimension.getAssets()) {
+            Asset das = new Asset();
+
+            das.xmlId = generateIdIfNecessary(asset.getId());
+            das.xmlUrl = asset.getUrl();
+
+            if (das.xmlUrl == null) {
+                throw new Exception("No URL in asset '" + das.xmlId + "'");
+            }
+
+            if (asset.getFormat().equals("PNG")) {
+                das.xmlFormat = ARXDownload.PNG;
+            } else if (asset.getFormat().equals("JPG")) {
+                das.xmlFormat = ARXDownload.PNG;
+            } else if (asset.getFormat().equals("GAMA3D")) {
+                das.xmlFormat = ARXDownload.GAMA3D;
+            } else {
+                throw new Exception("Format '" + asset.getFormat() + "' not supported in asset '" + das.xmlId + "'.");
+            }
+
+            assetMap.put(das.xmlId, das);
+            putId(das.xmlId);
+
+        }
+
+        for (Feature feature : dimension.getFeatures()) {
+            Placemark pm = null;
+
+            if (feature instanceof Feature3D) {
+                pm = new Placemark3D();
+            } else if (feature instanceof FeatureImg) {
+                pm = new PlacemarkImg();
+            } else if (feature instanceof FeatureTxt) {
+                pm = new PlacemarkTxt();
+            }
+
+            if (pm != null) {
+                pm.xmlId = generateIdIfNecessary(feature.getId());
+                pm.xmlLocationId = feature.getLocationId();
+                if (pm.xmlLocationId == null) {
+
+                    if (feature.getLocation() == null) {
+                        throw new Exception("No location in feature '" + pm.xmlId + "'");
+                    }
+
+                    pm.xmlGeoLoc.lat = feature.getLocation().getLat();
+                    pm.xmlGeoLoc.lon = feature.getLocation().getLon();
+                    pm.xmlGeoLoc.alt = (Integer) defaultIfNull(feature.getLocation().getAlt(), 0);
+
+                } else {
+                    checkId(pm.xmlId, pm.xmlLocationId);
+                    pm.xmlGeoLoc.setTo((GeoPoint) refPointMap.get(pm.xmlLocationId));
+                }
+                pm.xmlOnPress = feature.getOnPress();
+                pm.xmlLocX = (Float) defaultIfNull(feature.getxLoc(), 0.0f);
+                pm.xmlLocY = (Float) defaultIfNull(feature.getyLoc(), 0.0f);
+                pm.xmlLocZ = (Float) defaultIfNull(feature.getzLoc(), 0.0f);
+
+                pm.xmlShowOnFocus = feature.getShowOnFocus();
+                pm.xmlShowInRadar = (Boolean) defaultIfNull(feature.getShowOnFocus(), true);
+
+                if (pm instanceof Placemark3D) {
+                    Placemark3D pm3d = (Placemark3D) pm;
+                    Feature3D feature3d = (Feature3D) feature;
+                    pm3d.xmlRotX = (Float) defaultIfNull(feature3d.getxRot(), 0.0);
+                    pm3d.xmlRotY = (Float) defaultIfNull(feature3d.getyRot(), 0.0);
+                    pm3d.xmlRotZ = (Float) defaultIfNull(feature3d.getzRot(), 0.0);
+                    pm3d.xmlScale = (Float) defaultIfNull(feature3d.getScale(), 1.0);
+
+                    pm3d.xmlAssetId = feature3d.getAssetId();
+                    checkId(pm.xmlId, pm3d.xmlAssetId);
+                    pm3d.asset = (Asset) assetMap.get(pm3d.xmlAssetId);
+
+                    if (pm3d.asset.xmlFormat != ARXDownload.GAMA3D) {
+                        throw new Exception("Invalid format for asset in feature '" + pm.xmlId + "'");
+                    }
+
+                } else if (pm instanceof PlacemarkImg) {
+                    PlacemarkImg pmImg = (PlacemarkImg) pm;
+                    FeatureImg featureImg = (FeatureImg) feature;
+                    pmImg.xmlAnchor = (String) defaultIfNull(featureImg.getAnchor(), "BC");
+
+                    pmImg.xmlAssetId = featureImg.getAssetId();
+                    checkId(pm.xmlId, pmImg.xmlAssetId);
+                    pmImg.asset = (Asset) assetMap.get(pmImg.xmlAssetId);
+
+                    if (pmImg.asset.xmlFormat != ARXDownload.PNG && pmImg.asset.xmlFormat != ARXDownload.JPG) {
+                        throw new Exception("Invalid format for asset in feature '" + pm.xmlId + "'");
+                    }
+                } else if (pm instanceof PlacemarkTxt) {
+                    PlacemarkTxt pmTxt = (PlacemarkTxt) pm;
+                    FeatureTxt featureTxt = (FeatureTxt) feature;
+                    pmTxt.xmlText = (String) defaultIfNull(featureTxt.getText(), ".....");
+                    pmTxt.xmlAnchor = (String) defaultIfNull(featureTxt.getAnchor(), "BC");
+                }
+
+                pm.layer = this;
+
+                placemarkMap.put(pm.xmlId, pm);
+                putId(pm.xmlId);
+            }
+
+        }
+
+        for (com.gamaray.arex.model.Overlay overlay : dimension.getOverlays()) {
+            Overlay ovl = null;
+
+            if (overlay instanceof com.gamaray.arex.model.OverlayImg) {
+                ovl = new OverlayImg();
+            } else if (overlay instanceof com.gamaray.arex.model.OverlayTxt) {
+                ovl = new OverlayTxt();
+            }
+
+            if (ovl != null) {
+                ovl.xmlId = generateIdIfNecessary(overlay.getId());
+                ovl.xmlOnPress = overlay.getOnPress();
+                ovl.xmlX = (Float) defaultIfNull(overlay.getX(), 0.0);
+                ovl.xmlY = (Float) defaultIfNull(overlay.getY(), 0.0);
+                ovl.xmlAnchor = (String) defaultIfNull(overlay.getAnchor(), "TL");
+                ovl.xmlHidden = (Boolean) defaultIfNull(overlay.getHidden(), false);
+
+                if (ovl instanceof OverlayImg) {
+                    OverlayImg ovlImg = (OverlayImg) ovl;
+                    com.gamaray.arex.model.OverlayImg overlayImg = (com.gamaray.arex.model.OverlayImg) overlay;
+
+                    ovlImg.xmlAssetId = overlayImg.getAssetId();
+                    checkId(ovl.xmlId, ovlImg.xmlAssetId);
+                    ovlImg.asset = (Asset) assetMap.get(ovlImg.xmlAssetId);
+
+                    if (ovlImg.asset.xmlFormat != ARXDownload.PNG && ovlImg.asset.xmlFormat != ARXDownload.JPG) {
+                        throw new Exception("Invalid format for asset in overlay '" + ovl.xmlId + "'");
+                    }
+                } else if (ovl instanceof OverlayTxt) {
+                    OverlayTxt ovlTxt = (OverlayTxt) ovl;
+                    com.gamaray.arex.model.OverlayTxt overlayTxt = (com.gamaray.arex.model.OverlayTxt) overlay;
+
+                    ovlTxt.xmlText = (String) defaultIfNull(overlayTxt.getText(), "...");
+                    ovlTxt.xmlWidth = (Float) defaultIfNull(overlayTxt.getWidth(), 200.0);
+                }
+
+                ovl.layer = this;
+
+                overlayMap.put(ovl.xmlId, ovl);
+                putId(ovl.xmlId);
+            }
+        }
+
+    }
+
+    private String generateIdIfNecessary(String id) {
+        if (id != null) {
+            return id;
+        } else {
+            return "AUTO_ID_" + (idCounter++);
+        }
+    }
+
+    private Object defaultIfNull(Object value, Object defaultValue) {
+        if (value != null) {
+            return value;
+        } else {
+            return defaultValue;
+        }
+    }
+
+    public void load_v1_0(Element layerElem) throws Exception {
+        xmlName = layerElem.getChildElementValue("name", "NO_NAME");
         xmlRefreshUrl = layerElem.getChildElementValue("refreshUrl");
 
         // Radar range
@@ -116,7 +340,7 @@ public class Layer {
         }
 
         // Sound
-        NonRootElement soundElem = layerElem.getChildElement("playSound");
+        Element soundElem = layerElem.getChildElement("playSound");
         if (soundElem != null)
             xmlSoundUrl = soundElem.getChildElementValue("url");
 
@@ -126,7 +350,7 @@ public class Layer {
 
         // Refresh Seconds
         xmlHasRefreshTime = false;
-        NonRootElement refreshTimeElem = layerElem.getChildElement("refreshTime");
+        Element refreshTimeElem = layerElem.getChildElement("refreshTime");
         if (refreshTimeElem != null) {
             xmlValidFor = Integer.parseInt(refreshTimeElem.getChildElementValue("validFor", "30000"));
             xmlWaitForAssets = Boolean.parseBoolean(refreshTimeElem.getChildElementValue("waitForAssets", "true"));
@@ -135,7 +359,7 @@ public class Layer {
 
         // Refresh Meters
         xmlHasRefreshDistance = false;
-        NonRootElement refreshDistanceElem = layerElem.getChildElement("refreshDistance");
+        Element refreshDistanceElem = layerElem.getChildElement("refreshDistance");
         if (refreshDistanceElem != null) {
             xmlValidWithinRange = Float
                     .parseFloat(refreshDistanceElem.getChildElementValue("validWithinRange", "1000"));
@@ -143,10 +367,10 @@ public class Layer {
         }
 
         // Locations
-        NonRootElement refptsElem = layerElem.getChildElement("locations");
+        Element refptsElem = layerElem.getChildElement("locations");
         if (refptsElem != null) {
             for (int i = 0; i < refptsElem.getChildElements().size(); i++) {
-                NonRootElement refptElem = (NonRootElement) refptsElem.getChildElements().get(i);
+                Element refptElem = (Element) refptsElem.getChildElements().get(i);
 
                 if (refptElem.getName().equals("location")) {
                     GeoPoint refpt = new GeoPoint();
@@ -164,10 +388,10 @@ public class Layer {
         }
 
         // Assets
-        NonRootElement assetsElem = layerElem.getChildElement("assets");
+        Element assetsElem = layerElem.getChildElement("assets");
         if (assetsElem != null) {
             for (int i = 0; i < assetsElem.getChildElements().size(); i++) {
-                NonRootElement assetElem = (NonRootElement) assetsElem.getChildElements().get(i);
+                Element assetElem = (Element) assetsElem.getChildElements().get(i);
 
                 if (assetElem.getName().equals("asset")) {
                     Asset das = new Asset();
@@ -188,7 +412,6 @@ public class Layer {
                     else
                         throw new Exception("Format '" + formatStr + "' not supported in asset '" + das.xmlId + "'.");
 
-                    assets.add(das);
                     assetMap.put(das.xmlId, das);
                     putId(das.xmlId);
                 }
@@ -196,10 +419,10 @@ public class Layer {
         }
 
         // Placemarks
-        NonRootElement placemarksElem = layerElem.getChildElement("features");
+        Element placemarksElem = layerElem.getChildElement("features");
         if (placemarksElem != null) {
             for (int i = 0; i < placemarksElem.getChildElements().size(); i++) {
-                NonRootElement pmElem = (NonRootElement) placemarksElem.getChildElements().get(i);
+                Element pmElem = (Element) placemarksElem.getChildElements().get(i);
                 Placemark pm = null;
 
                 if (pmElem.getName().equals("feature3d")) {
@@ -214,7 +437,7 @@ public class Layer {
                     pm.xmlId = pmElem.getAttribValue("id", "AUTO_ID_" + (idCounter++));
                     pm.xmlLocationId = pmElem.getChildElementValue("locationId");
                     if (pm.xmlLocationId == null) {
-                        NonRootElement locElem = pmElem.getChildElement("location");
+                        Element locElem = pmElem.getChildElement("location");
 
                         if (locElem == null)
                             throw new Exception("No location in feature '" + pm.xmlId + "'");
@@ -269,7 +492,6 @@ public class Layer {
 
                     pm.layer = this;
 
-                    placemarks.add(pm);
                     placemarkMap.put(pm.xmlId, pm);
                     putId(pm.xmlId);
                 }
@@ -277,10 +499,10 @@ public class Layer {
         }
 
         // Overlays
-        NonRootElement overlaysElem = layerElem.getChildElement("overlays");
+        Element overlaysElem = layerElem.getChildElement("overlays");
         if (overlaysElem != null) {
             for (int i = 0; i < overlaysElem.getChildElements().size(); i++) {
-                NonRootElement ovlElem = (NonRootElement) overlaysElem.getChildElements().get(i);
+                Element ovlElem = (Element) overlaysElem.getChildElements().get(i);
                 Overlay ovl = null;
 
                 if (ovlElem.getName().equals("overlayImg")) {
@@ -316,7 +538,6 @@ public class Layer {
 
                     ovl.layer = this;
 
-                    overlays.add(ovl);
                     overlayMap.put(ovl.xmlId, ovl);
                     putId(ovl.xmlId);
                 }
@@ -334,4 +555,35 @@ public class Layer {
             throw new Exception("Duplicate id '" + id + "'");
         idMap.put(id, "VALUE");
     }
+
+    public List<Placemark> getZOrderedPlacemarks() {
+        if (zOrderedPlacemarks==null){
+            //TODO:Maybe syncronize
+            zOrderedPlacemarks=new ArrayList<Placemark>(placemarkMap.values());
+            Collections.sort(zOrderedPlacemarks, Z_ORDER_COMPARATOR);
+        }
+        return zOrderedPlacemarks;
+    }
+
+    public Placemark getPlacemark(String id) {
+        return placemarkMap.get(id);
+
+    }
+
+    public Collection<Asset> getAssets() {
+        return assetMap.values();
+    }
+
+    public Asset getAsset(String id) {
+        return assetMap.get(id);
+    }
+
+    public Collection<Overlay> getOverlays() {
+        return overlayMap.values();
+    }
+
+    public Overlay getOverlay(String id) {
+        return overlayMap.get(id);
+    }
+
 }

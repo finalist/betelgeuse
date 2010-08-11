@@ -1,30 +1,35 @@
 package com.gamaray.arex;
 
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
+
+import android.util.Log;
 
 import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.format3d.GAMA3DHandler;
 import com.gamaray.arex.io.ARXHttpInputStream;
-import com.gamaray.arex.xml.NonRootElement;
-import com.gamaray.arex.xml.RootElement;
+import com.gamaray.arex.loader.DimensionParser;
+import com.gamaray.arex.loader.DownloadJobRequest;
+import com.gamaray.arex.loader.DownloadJobResult;
+import com.gamaray.arex.loader.Loader;
+import com.gamaray.arex.model.Dimension;
 
 public class ARXDownload implements Runnable {
-    public static int NONE = 0, GAMADIM = 1, GAMA3D = 2, OBJ = 3, PNG = 4, JPG = 4;
+    public final static int NONE = 0, GAMADIM = 1, GAMA3D = 2, OBJ = 3, PNG = 4, JPG = 4;
+    public static final int NOT_STARTED = 0, WAITING = 1, WORKING = 2, PAUSED = 3, STOPPED = 4;
 
     private boolean stop = false, pause = false, action = false;
-    public static int NOT_STARTED = 0, WAITING = 1, WORKING = 2, PAUSED = 3, STOPPED = 4;
     private int state = NOT_STARTED;
 
     private int id = 0;
-    private HashMap workingList = new HashMap();
-    private HashMap completedList = new HashMap();
-    ARXHttpInputStream is;
+    private Map<String,DownloadJobRequest> workingList = new HashMap<String, DownloadJobRequest>();
+    private Map<String,DownloadJobResult> completedList = new HashMap<String, DownloadJobResult>();
+    private Map<String,DownloadJobResult> cache = new HashMap<String, DownloadJobResult>();
+    private ARXHttpInputStream is;
 
     private String activeJobId = null;
-
-    private HashMap cache = new HashMap();
-
-    ARXContext ctx;
+    private final ARXContext ctx;
 
     public ARXDownload(ARXContext ctx) {
         this.ctx = ctx;
@@ -111,7 +116,7 @@ public class ARXDownload implements Runnable {
     }
 
     private DownloadJobResult processRequest(DownloadJobRequest request) {
-        DownloadJobResult result = new DownloadJobResult();
+        DownloadJobResult result=null;
 
         try {
             if (emptyCache) {
@@ -119,60 +124,60 @@ public class ARXDownload implements Runnable {
                 emptyCache = false;
             }
 
-            if (request.cacheable && cache.containsKey(request.url)) {
-                return (DownloadJobResult) cache.get(request.url);
+            if (request.isCacheable() && cache.containsKey(request.getUrl())) {
+                return (DownloadJobResult) cache.get(request.getUrl());
             }
 
-            if (request.format == GAMA3D) {
-                is = ctx.getHttpGETInputStream(request.url);
+            if (request.getFormat() == GAMA3D) {
+                is = ctx.getHttpGETInputStream(request.getUrl());
 
                 GAMA3DHandler handler = new GAMA3DHandler();
                 handler.load(is, null);
                 handler.getMesh().calc();
+                
+                result=new DownloadJobResult(request.getFormat(), handler.getMesh());
+                
+            } else if (request.getFormat() == PNG || request.getFormat() == JPG) {
+                is = ctx.getHttpGETInputStream(request.getUrl());
+                result=new DownloadJobResult(request.getFormat(), ctx.createBitmap(is));
+                
+            } else if (request.getFormat() == GAMADIM) {
+                is = ctx.getHttpPOSTInputStream(request.getUrl(), request.getParams());
+//                String line;
+//                StringBuffer sb= new StringBuffer();
+//                BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+//                while ((line = reader.readLine()) != null) {
+//                    sb.append(line).append("\n");
+//                }
+//                System.out.println(sb.toString());
+//                is = ctx.getHttpPOSTInputStream(request.getUrl(), request.getParams());
+                org.w3c.dom.Element dimensionElement=Loader.readXML(is);
+                Dimension dimension=DimensionParser.loadDimension(dimensionElement);
 
-                result.format = request.format;
-                result.obj = handler.getMesh();
-                result.error = false;
-                result.errorMsg = null;
-            } else if (request.format == PNG || request.format == JPG) {
-                is = ctx.getHttpGETInputStream(request.url);
-
-                result.format = request.format;
-                result.obj = ctx.createBitmap(is);
-                result.error = false;
-                result.errorMsg = null;
-            } else if (request.format == GAMADIM) {
-                is = ctx.getHttpPOSTInputStream(request.url, request.params);
-
-                RootElement root = ctx.parseXML(is);
-
-                Layer layer = new Layer();
-                layer.load(root);
-
-                result.format = request.format;
-                result.obj = layer;
-                result.error = false;
-                result.errorMsg = null;
+                result=new DownloadJobResult(request.getFormat(), new Layer(dimension));
             }
 
-            ctx.returnHttpInputStream(is);
-            is = null;
 
-            if (request.cacheable)
-                cache.put(request.url, result);
+
+            if (request.isCacheable()){
+                cache.put(request.getUrl(), result);
+            }
         } catch (Exception ex) {
-            result.format = NONE;
-            result.obj = null;
-            result.error = true;
-            result.errorMsg = ex.getMessage();
-            result.errorRequest = request;
-
-            try {
-                ctx.returnHttpInputStream(is);
-            } catch (Exception ignore) {
-            }
-
+            result=new DownloadJobResult(ex.getMessage(), request);
+            //replace with logging.
+            Log.e("Gamaray", ex.getMessage());
+            Log.e("Gamaray", "failed on request : "+request.getUrl());
             ex.printStackTrace();
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    //TODO:replace with logging.
+                    e.printStackTrace();
+                }
+            }
+            
         }
 
         activeJobId = null;
@@ -227,34 +232,18 @@ public class ARXDownload implements Runnable {
         return state;
     }
 
-    public String getStateString() {
-        if (state == NOT_STARTED)
-            return "NOT_STARTED";
-        else if (state == WAITING)
-            return "WAITING";
-        else if (state == WORKING)
-            return "WORKING";
-        else if (state == PAUSED)
-            return "PAUSED";
-        else if (state == STOPPED)
-            return "STOPPED";
-        else
-            return "ERROR";
-    }
-}
-
-class DownloadJobRequest {
-    int format;
-    String url;
-    String params;
-    boolean cacheable;
-}
-
-class DownloadJobResult {
-    int format;
-    Object obj;
-
-    boolean error;
-    String errorMsg;
-    DownloadJobRequest errorRequest;
+//    public String getStateString() {
+//        if (state == NOT_STARTED)
+//            return "NOT_STARTED";
+//        else if (state == WAITING)
+//            return "WAITING";
+//        else if (state == WORKING)
+//            return "WORKING";
+//        else if (state == PAUSED)
+//            return "PAUSED";
+//        else if (state == STOPPED)
+//            return "STOPPED";
+//        else
+//            return "ERROR";
+//    }
 }

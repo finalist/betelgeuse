@@ -48,8 +48,8 @@ abstract public class Overlay {
 class OverlayImg extends Overlay {
     public void draw(DrawWindow dw) {
         if (asset.downloadStatus == ARXState.READY) {
-            if (!asset.downloadResult.error) {
-                Bitmap bmp = (Bitmap) asset.downloadResult.obj;
+            if (!asset.downloadResult.isError()) {
+                Bitmap bmp = (Bitmap) asset.downloadResult.getObj();
 
                 anchoredObj.prepare(bmp, xmlAnchor);
 

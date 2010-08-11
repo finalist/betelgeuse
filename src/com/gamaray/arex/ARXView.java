@@ -4,7 +4,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import com.gamaray.arex.context.ARXContext;
@@ -15,6 +17,7 @@ import com.gamaray.arex.gui.Drawable;
 import com.gamaray.arex.gui.GUIUtil;
 import com.gamaray.arex.gui.MenuItem;
 import com.gamaray.arex.gui.Vector2D;
+import com.gamaray.arex.loader.DownloadJobRequest;
 import com.gamaray.arex.render3d.Camera;
 import com.gamaray.arex.render3d.Color;
 import com.gamaray.arex.render3d.Matrix3D;
@@ -33,9 +36,10 @@ public class ARXView {
     String CLOUD_SERVER = "dimensions.gamaray.com";
     String SERVER = CLOUD_SERVER;
     // String REDIRECT_URL = "http://" + SERVER + "/Dimensions/Redirect";
-    String HOME_URL = "http://www.gamaray.com/home.gddf";
+    String HOME_URL = "gamaray://betelgeusedesigner.appspot.com/gamaray/24001.gddf";
 
-    ArrayList icons = new ArrayList();
+    // ArrayList icons = new ArrayList();
+    private List<Event> events = new ArrayList<Event>();
 
     public int NORTH = 0, EAST = 90, SOUTH = 180, WEST = 270;
     public int NO_DIALOG = 0, RADAR_DIALOG = 1, INFO_DIALOG = 2;
@@ -59,7 +63,7 @@ public class ARXView {
     MenuItem miHideMessages = new MenuItem(7, "Hide Messages");
     MenuItem miRefresh = new MenuItem(8, "Reload");
     MenuItem miHome = new MenuItem(9, "Home" + (SERVER.equals(LOCAL_SERVER) ? " (LOCAL)" : ""));
-
+    
     public ARXView(ARXContext ctx) {
         this.ctx = ctx;
     }
@@ -84,7 +88,7 @@ public class ARXView {
 
             ARXMessages.loadIcons(ctx);
 
-            Map<String,Object> prefs = ctx.getPrefs();
+            Map<String, Object> prefs = ctx.getPrefs();
             if (!prefs.containsKey("UID")) {
                 prefs.put("UID", "UID" + Math.abs(ctx.getRandomLong()));
 
@@ -180,6 +184,7 @@ public class ARXView {
 
         state.screenWidth = width;
         state.screenHeight = height;
+        
 
         if (ctx.getLaunchUrl().equals("") || ctx.getLaunchUrl().equals(state.launchUrl)) {
             state.launchNeeded = false;
@@ -203,14 +208,14 @@ public class ARXView {
              * state.nextLayerStatus = ARXState.JOB_SUBMITTED;
              */
 
-            DownloadJobRequest request = new DownloadJobRequest();
-            request.format = ARXDownload.GAMADIM;
-            request.cacheable = false;
-            request.params = state.getParams("init", "NULL");
-            if (!ctx.getLaunchUrl().equals(""))
-                request.url = ctx.getLaunchUrl();
-            else
-                request.url = HOME_URL;
+            String requestUrl;
+            if (!ctx.getLaunchUrl().equals("")) {
+                requestUrl = ctx.getLaunchUrl();
+            } else {
+                requestUrl = HOME_URL;
+            }
+            DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, requestUrl, state.getParams(
+                    "init", "NULL"), false);
 
             state.launchNeeded = false;
             state.launchUrl = ctx.getLaunchUrl();
@@ -232,23 +237,22 @@ public class ARXView {
 
             if (ctx.getARXDownload().getState() == ARXDownload.PAUSED &&
                     ctx.getARXRender().getState() == ARXRender.PAUSED) {
-                if (state.downloadResult.error) {
+                if (state.downloadResult.isError()) {
                     if (state.retryCount < 10) {
                         ARXMessages.removeMessage("LOADING_" + state.downloadJobId);
                         ARXMessages.removeMessage("ERROR_" + state.downloadJobId);
 
-                        DownloadJobRequest request = new DownloadJobRequest();
-                        request.format = ARXDownload.GAMADIM;
-                        request.url = state.downloadResult.errorRequest.url;
-                        request.cacheable = state.downloadResult.errorRequest.cacheable;
-                        request.params = state.downloadResult.errorRequest.params;
+                        DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, state.downloadResult
+                                .getErrorRequest().getUrl(), state.downloadResult.getErrorRequest().getParams(),
+                                state.downloadResult.getErrorRequest().isCacheable());
                         state.downloadJobId = ctx.getARXDownload().submitJob(request);
 
                         state.nextLayerStatus = ARXState.JOB_SUBMITTED;
                         state.retryCount++;
 
-                        ARXMessages.putMessage("ERROR_" + state.downloadJobId, "Error: " +
-                                state.downloadResult.errorMsg, ARXMessages.warningIcon, Integer.MAX_VALUE);
+                        ARXMessages.putMessage("ERROR_" + state.downloadJobId,
+                                "Error: " + state.downloadResult.getErrorMsg(), ARXMessages.warningIcon,
+                                Integer.MAX_VALUE);
 
                         ARXMessages.putMessage("LOADING_" + state.downloadJobId, "Dimension loading (retry #" +
                                 state.retryCount + ")", ARXMessages.refreshIcon, Integer.MAX_VALUE);
@@ -259,11 +263,12 @@ public class ARXView {
                         ARXMessages.removeMessage("LOADING_" + state.downloadJobId);
 
                         ARXMessages.putMessage("FATAL_ERROR_" + state.downloadJobId, "Unable to load dimension: " +
-                                state.downloadResult.errorRequest.url, ARXMessages.errorIcon, Integer.MAX_VALUE);
+                                state.downloadResult.getErrorRequest().getUrl(), ARXMessages.errorIcon,
+                                Integer.MAX_VALUE);
                     }
                 } else {
-                    Layer oldLayer = state.layer;
-                    Layer newLayer = (Layer) state.downloadResult.obj;
+                    // Layer oldLayer = state.layer;
+                    Layer newLayer = (Layer) state.downloadResult.getObj();
 
                     ARXMessages.removeMessage("ERROR_" + state.downloadJobId);
 
@@ -279,25 +284,24 @@ public class ARXView {
                     ctx.getARXRender().clearLists();
 
                     // Transfer valid renders
-                    for (int i = 0; i < state.layer.placemarks.size(); i++) {
-                        Placemark pm = (Placemark) state.layer.placemarks.get(i);
 
+                    for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
                         if (pm instanceof Placemark3D) {
                             Placemark3D src = (Placemark3D) pm;
-                            Placemark3D dest = (Placemark3D) newLayer.placemarkMap.get(src.xmlId);
-
-                            if (dest != null)
+                            Placemark3D dest = (Placemark3D) newLayer.getPlacemark(src.xmlId);
+                            if (dest != null) {
                                 src.copyRenderState(dest);
+                            }
                         }
+
                     }
 
                     // Transfer valid downloads
-                    for (int i = 0; i < state.layer.assets.size(); i++) {
-                        Asset das = (Asset) state.layer.assets.get(i);
-
-                        Asset dest = (Asset) newLayer.assetMap.get(das.xmlId);
-                        if (dest != null)
+                    for (Asset das : state.layer.getAssets()) {
+                        Asset dest = (Asset) newLayer.getAsset(das.xmlId);
+                        if (dest != null) {
                             das.copyDownloadState(dest);
+                        }
                     }
 
                     // Set layer creation time and location
@@ -320,33 +324,22 @@ public class ARXView {
             }
         }
 
-        // Update placemarks
-        for (int i = 0; i < state.layer.placemarks.size(); i++) {
-            Placemark pm = (Placemark) state.layer.placemarks.get(i);
-
+        for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
+            // Update placemarks
             pm.updateState(state.curFix, System.currentTimeMillis());
-        }
 
-        // Prepare placemarks for draw
-        for (int i = 0; i < state.layer.placemarks.size(); i++) {
-            Placemark pm = (Placemark) state.layer.placemarks.get(i);
-
+            // Prepare placemarks for draw
             pm.prepareDraw(cam);
         }
 
-        // Sort placemarks by centerMark.z
-        Collections.sort(state.layer.placemarks, new PlacemarkZCompare());
 
         // Draw placemarks
-        for (int i = 0; i < state.layer.placemarks.size(); i++) {
-            Placemark pm = (Placemark) state.layer.placemarks.get(i);
-
+        for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
             pm.draw(dw);
         }
 
         // Update asset download status
-        for (int i = 0; i < state.layer.assets.size(); i++) {
-            Asset das = (Asset) state.layer.assets.get(i);
+        for (Asset das : state.layer.getAssets()) {
 
             das.isDownloadJobActive = false;
             if (das.downloadStatus == ARXState.JOB_SUBMITTED) {
@@ -365,8 +358,7 @@ public class ARXView {
 
         if (state.nextLayerStatus == ARXState.READY) {
             // Update renders
-            for (int i = 0; i < state.layer.placemarks.size(); i++) {
-                Placemark pm = (Placemark) state.layer.placemarks.get(i);
+            for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
 
                 if (pm instanceof Placemark3D) {
                     ((Placemark3D) pm).updateRenders(cam, ctx);
@@ -374,14 +366,13 @@ public class ARXView {
             }
 
             // Handle show actions
-            for (int i = 0; i < state.layer.overlays.size(); i++) {
-                Overlay ovl = (Overlay) state.layer.overlays.get(i);
+            for (Overlay ovl : state.layer.getOverlays()) {
                 ovl.show = false;
             }
+
             float minDist = Float.MAX_VALUE;
             Placemark closestPM = null;
-            for (int i = 0; i < state.layer.placemarks.size(); i++) {
-                Placemark pm = (Placemark) state.layer.placemarks.get(i);
+            for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
 
                 if (minDist > pm.distToCenter && pm.distToCenter < 50 && pm.xmlShowOnFocus != null) {
                     minDist = pm.distToCenter;
@@ -400,8 +391,7 @@ public class ARXView {
             }
 
             // Draw Overlays
-            for (int i = 0; i < state.layer.overlays.size(); i++) {
-                Overlay ovl = (Overlay) state.layer.overlays.get(i);
+            for (Overlay ovl : state.layer.getOverlays()) {
 
                 if (ovl.isVisible())
                     ovl.draw(dw);
@@ -409,16 +399,11 @@ public class ARXView {
 
             // Request asset downloads
             boolean allAssetsDownloaded = true;
-            for (int i = 0; i < state.layer.assets.size(); i++) {
-                Asset das = (Asset) state.layer.assets.get(i);
+            for (Asset das : state.layer.getAssets()) {
 
                 das.isDownloadJobActive = false;
                 if (das.downloadStatus == ARXState.NOT_STARTED) {
-                    DownloadJobRequest request = new DownloadJobRequest();
-                    request.format = das.xmlFormat;
-                    request.url = das.xmlUrl;
-                    request.cacheable = true;
-                    request.params = null;
+                    DownloadJobRequest request = new DownloadJobRequest(das.xmlFormat, das.xmlUrl, null, true);
                     das.downloadJobId = ctx.getARXDownload().submitJob(request);
 
                     das.downloadStatus = ARXState.JOB_SUBMITTED;
@@ -428,7 +413,7 @@ public class ARXView {
                         das.downloadResult = ctx.getARXDownload().getJobResult(das.downloadJobId);
                         das.downloadStatus = ARXState.READY;
 
-                        if (!das.downloadResult.error) {
+                        if (!das.downloadResult.isError()) {
                             ARXMessages.putMessage("DOWNLOAD_ASSET", "Download of '" + das.xmlId + "' complete", "",
                                     ARXMessages.downloadCompleteIcon, 500, true);
                         } else {
@@ -443,9 +428,11 @@ public class ARXView {
                             das.downloadJobPctComplete = ctx.getARXDownload().getActiveJobPctComplete();
 
                             String pctTxt = ARXUtil.formatDecimal(das.downloadJobPctComplete * 100, 2);
-                            ARXMessages.putMessage("DOWNLOAD_ASSET", "Downloading '" + das.xmlId + "' (" +
-                                    ARXUtil.formatDecimal(das.downloadJobPctComplete * 100, 2) + "%)", "[" + pctTxt +
-                                    "%]", ARXMessages.downloadIcon, 500, true);
+                            ARXMessages.putMessage(
+                                    "DOWNLOAD_ASSET",
+                                    "Downloading '" + das.xmlId + "' (" +
+                                            ARXUtil.formatDecimal(das.downloadJobPctComplete * 100, 2) + "%)", "[" +
+                                            pctTxt + "%]", ARXMessages.downloadIcon, 500, true);
                         }
                     }
 
@@ -458,12 +445,12 @@ public class ARXView {
                 state.layer.allAssetsDownloaded = true;
                 state.layer.assetDownloadTime = System.currentTimeMillis();
 
-                ARXMessages.putMessage("ASSETS_LOADING_COMPLETE", "Dimension '" + state.layer.getDim().getName() + "' loaded", "",
+                ARXMessages.putMessage("ASSETS_LOADING_COMPLETE", "Dimension '" + state.layer.xmlName + "' loaded", "",
                         ARXMessages.refreshCompleteIcon, 3000, true);
             }
 
             if (!allAssetsDownloaded) {
-                ARXMessages.putMessage("ASSETS_LOADING", "Dimension '" + state.layer.getDim().getName() + "' loading",
+                ARXMessages.putMessage("ASSETS_LOADING", "Dimension '" + state.layer.xmlName + "' loading",
                         ARXMessages.refreshIcon, 500);
             }
         }
@@ -513,11 +500,8 @@ public class ARXView {
                 evtName = "refreshOnTime";
 
             if (evtName != null) {
-                DownloadJobRequest request = new DownloadJobRequest();
-                request.format = ARXDownload.GAMADIM;
-                request.url = state.layer.xmlRefreshUrl;
-                request.cacheable = false;
-                request.params = state.getParams(evtName, "NULL");
+                DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, state.layer.xmlRefreshUrl,
+                        state.getParams(evtName, "NULL"), false);
                 state.downloadJobId = ctx.getARXDownload().submitJob(request);
 
                 state.nextLayerStatus = ARXState.JOB_SUBMITTED;
@@ -560,7 +544,7 @@ public class ARXView {
             String refreshTimeTxt = ((System.currentTimeMillis() - state.layer.creationTime) / 1000) + "s";
             String validForTxt = (state.layer.xmlHasRefreshTime) ? (state.layer.xmlValidFor / 1000) + "s" : "NA";
 
-            dw.drawText(infoCurX, infoCurY, "Dimension: " + state.layer.getDim().getName());
+            dw.drawText(infoCurX, infoCurY, "Dimension: " + state.layer.xmlName);
             infoCurY += infoLineHeight * 2;
             dw.drawText(infoCurX, infoCurY, "Latitude: " + state.curFix.lat);
             infoCurY += infoLineHeight;
@@ -641,14 +625,15 @@ public class ARXView {
                  * state.nextLayerStatus = ARXState.JOB_SUBMITTED;
                  */
 
-                DownloadJobRequest request = new DownloadJobRequest();
-                request.format = ARXDownload.GAMADIM;
-                request.cacheable = false;
-                request.params = state.getParams("init", "NULL");
-                if (!state.launchUrl.equals(""))
-                    request.url = state.launchUrl;
-                else
-                    request.url = HOME_URL;
+                String requestUrl;
+                if (!state.launchUrl.equals("")) {
+                    requestUrl = state.launchUrl;
+                } else {
+                    requestUrl = HOME_URL;
+                }
+
+                DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, requestUrl, state.getParams(
+                        "init", "NULL"), false);
 
                 state.launchNeeded = false;
                 state.launchUrl = ctx.getLaunchUrl();
@@ -674,11 +659,8 @@ public class ARXView {
                  * state.nextLayerStatus = ARXState.JOB_SUBMITTED;
                  */
 
-                DownloadJobRequest request = new DownloadJobRequest();
-                request.format = ARXDownload.GAMADIM;
-                request.url = HOME_URL;
-                request.cacheable = false;
-                request.params = state.getParams("init", "NULL");
+                DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, HOME_URL, state.getParams(
+                        "init", "NULL"), false);
 
                 state.launchUrl = "";
                 state.downloadJobId = ctx.getARXDownload().submitJob(request);
@@ -705,18 +687,19 @@ public class ARXView {
         // Handle event
         if (state.nextLayerStatus == ARXState.READY) {
             // Loop through overlays
-            for (int i = state.layer.overlays.size() - 1; i >= 0 && !evtHandled; i--) {
-                Overlay ovl = (Overlay) state.layer.overlays.get(i);
-
+            Iterator<Overlay> overlayIt = state.layer.getOverlays().iterator();
+            while (!evtHandled && overlayIt.hasNext()) {
+                Overlay ovl = overlayIt.next();
                 evtHandled = ovl.press(evt.x, evt.y, ctx, state);
             }
 
-            // Loop through placemarks
-            for (int i = state.layer.placemarks.size() - 1; i >= 0 && !evtHandled; i--) {
-                Placemark pm = (Placemark) state.layer.placemarks.get(i);
-
+            // TODO:these should also be ordered according to distance.
+            Iterator<Placemark> placemarkIt = state.layer.getZOrderedPlacemarks().iterator();
+            while (!evtHandled && placemarkIt.hasNext()) {
+                Placemark pm = placemarkIt.next();
                 evtHandled = pm.press(evt.x, evt.y, ctx, state);
             }
+
         }
 
         return evtHandled;
@@ -739,9 +722,7 @@ public class ARXView {
 
     }
 
-    ArrayList events = new ArrayList();
-
-    public void createMenuEvent(ArrayList menu) {
+    public void createMenuEvent(List<MenuItem> menu) {
         if (!ctx.gpsEnabled())
             return;
 
@@ -955,9 +936,9 @@ class RadarObjects implements Drawable {
 
         float scale = range / RADIUS;
 
-        for (int i = 0; i < state.layer.placemarks.size(); i++) {
-            Placemark pm = (Placemark) state.layer.placemarks.get(i);
-
+        //TODO:these should also be ordered.
+        
+        for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
             float x = pm.obj.location.x / scale;
             float y = pm.obj.location.z / scale;
 
@@ -967,6 +948,7 @@ class RadarObjects implements Drawable {
                 dw.drawRectangle(x + RADIUS - 1, y + RADIUS - 1, 2, 2);
             }
         }
+        
     }
 
     public float getWidth() {
@@ -999,14 +981,5 @@ class ResFileSystem implements SimpleVFS {
 
     public void returnOutputStream(OutputStream os) throws Exception {
 
-    }
-}
-
-class PlacemarkZCompare implements java.util.Comparator {
-    public int compare(Object left, Object right) {
-        Placemark leftPm = (Placemark) left;
-        Placemark rightPm = (Placemark) right;
-
-        return Float.compare(leftPm.centerMark.z, rightPm.centerMark.z);
     }
 }

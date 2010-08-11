@@ -195,7 +195,7 @@ class Placemark3D extends Placemark {
         obj.location.add(loc);
 
         if (asset.downloadStatus == ARXState.READY) {
-            obj.mesh = (Mesh3D) asset.downloadResult.obj;
+            obj.mesh = (Mesh3D) asset.downloadResult.getObj();
         }
 
         if (!stale && drawMode == RENDER_READY) {
@@ -289,7 +289,7 @@ class Placemark3D extends Placemark {
 
     public void updateRenders(Camera cam, ARXContext ctx) {
         if (asset.downloadStatus == ARXState.READY) {
-            if (asset.downloadResult.error) {
+            if (asset.downloadResult.isError()) {
                 drawMode = ERROR;
             } else {
                 if (nextRenderStatus == ARXState.NOT_STARTED) {
@@ -427,7 +427,7 @@ class PlacemarkImg extends PlacemarkDrawable {
     void draw(DrawWindow dw) {
         if (isVisible) {
             if (asset.downloadStatus == ARXState.READY) {
-                if (asset.downloadResult.error) {
+                if (asset.downloadResult.isError()) {
                     dw.setFill(true);
                     dw.setColor(errOuterColor);
                     dw.drawCircle(centerMark.x, centerMark.y, BLOB_OUTER);
@@ -436,7 +436,7 @@ class PlacemarkImg extends PlacemarkDrawable {
                 } else {
                     float currentAngle = ARXUtil.getAngle(centerMark.x, centerMark.y, signPostMark.x, signPostMark.y);
 
-                    Bitmap bmp = (Bitmap) asset.downloadResult.obj;
+                    Bitmap bmp = (Bitmap) asset.downloadResult.getObj();
 
                     anchoredObj.prepare(bmp, xmlAnchor);
 

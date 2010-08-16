@@ -15,6 +15,7 @@ import com.gamaray.arex.model.FeatureImg;
 import com.gamaray.arex.model.FeatureTxt;
 import com.gamaray.arex.model.Location;
 import com.gamaray.arex.model.Overlay;
+import com.gamaray.arex.model.OverlayHtml;
 import com.gamaray.arex.model.OverlayImg;
 import com.gamaray.arex.model.OverlayTxt;
 
@@ -177,6 +178,8 @@ public class DimensionParser {
                 result.add(createOverlayImg(element));
             } else if (element.getTagName().trim().equalsIgnoreCase("overlayTxt")) {
                 result.add(createOverlayTxt(element));
+            } else if (element.getTagName().trim().equalsIgnoreCase("overlayHtml")) {
+                result.add(createOverlayHtml(element));
             }
         }
         return result;
@@ -194,6 +197,21 @@ public class DimensionParser {
         return new OverlayTxt(id, anchor, x, y, onPress, hidden, text, width);
     }
 
+    
+    private static Overlay createOverlayHtml(Element element) {
+        String anchor = getStringValue(element, "anchor");
+        String id = getStringValue(element, "id");
+        String onPress = getStringValue(element, "onPress");
+        Boolean hidden = getBooleanValue(element, "hidden");
+        Float x = getFloatValue(element, "x");
+        Float y = getFloatValue(element, "y");
+        Float width = getFloatValue(element, "width");
+        Float height = getFloatValue(element, "height");
+        String url = getStringValue(element, "url");
+        return new OverlayHtml(id, anchor, x, y, onPress, hidden, width, height, url);
+    }
+
+    
     private static Overlay createOverlayImg(Element element) {
         String id = getStringValue(element, "id");
         String anchor = getStringValue(element, "anchor");

@@ -367,7 +367,7 @@ public class ARXView {
 
             // Handle show actions
             for (Overlay ovl : state.layer.getOverlays()) {
-                ovl.show = false;
+                ovl.setShow(false);
             }
 
             float minDist = Float.MAX_VALUE;
@@ -386,7 +386,7 @@ public class ARXView {
                 for (int i = 0; i < ovlIds.length; i++) {
                     Overlay ovl = (Overlay) state.layer.overlayMap.get(ovlIds[i].trim());
                     if (ovl != null)
-                        ovl.show = true;
+                        ovl.setShow(true);
                 }
             }
 

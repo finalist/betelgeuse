@@ -277,36 +277,36 @@ public class Layer {
             }
 
             if (ovl != null) {
-                ovl.xmlId = generateIdIfNecessary(overlay.getId());
-                ovl.xmlOnPress = overlay.getOnPress();
-                ovl.xmlX = (Float) defaultIfNull(overlay.getX(), 0.0);
-                ovl.xmlY = (Float) defaultIfNull(overlay.getY(), 0.0);
-                ovl.xmlAnchor = (String) defaultIfNull(overlay.getAnchor(), "TL");
-                ovl.xmlHidden = (Boolean) defaultIfNull(overlay.getHidden(), false);
+                ovl.setXmlId(generateIdIfNecessary(overlay.getId()));
+                ovl.setXmlOnPress(overlay.getOnPress());
+                ovl.setXmlX((Float) defaultIfNull(overlay.getX(), 0.0));
+                ovl.setXmlY((Float) defaultIfNull(overlay.getY(), 0.0));
+                ovl.setXmlAnchor((String) defaultIfNull(overlay.getAnchor(), "TL"));
+                ovl.setXmlHidden((Boolean) defaultIfNull(overlay.getHidden(), false));
 
                 if (ovl instanceof OverlayImg) {
                     OverlayImg ovlImg = (OverlayImg) ovl;
                     com.gamaray.arex.model.OverlayImg overlayImg = (com.gamaray.arex.model.OverlayImg) overlay;
 
-                    ovlImg.xmlAssetId = overlayImg.getAssetId();
-                    checkId(ovl.xmlId, ovlImg.xmlAssetId);
-                    ovlImg.asset = (Asset) assetMap.get(ovlImg.xmlAssetId);
+                    ovlImg.setXmlAssetId(overlayImg.getAssetId());
+                    checkId(ovl.getXmlId(), ovlImg.getXmlAssetId());
+                    ovlImg.asset = (Asset) assetMap.get(ovlImg.getXmlAssetId());
 
                     if (ovlImg.asset.xmlFormat != ARXDownload.PNG && ovlImg.asset.xmlFormat != ARXDownload.JPG) {
-                        throw new Exception("Invalid format for asset in overlay '" + ovl.xmlId + "'");
+                        throw new Exception("Invalid format for asset in overlay '" + ovl.getXmlId() + "'");
                     }
                 } else if (ovl instanceof OverlayTxt) {
                     OverlayTxt ovlTxt = (OverlayTxt) ovl;
                     com.gamaray.arex.model.OverlayTxt overlayTxt = (com.gamaray.arex.model.OverlayTxt) overlay;
 
-                    ovlTxt.xmlText = (String) defaultIfNull(overlayTxt.getText(), "...");
-                    ovlTxt.xmlWidth = (Float) defaultIfNull(overlayTxt.getWidth(), 200.0);
+                    ovlTxt.setXmlText((String) defaultIfNull(overlayTxt.getText(), "..."));
+                    ovlTxt.setXmlWidth((Float) defaultIfNull(overlayTxt.getWidth(), 200.0));
                 }
 
                 ovl.layer = this;
 
-                overlayMap.put(ovl.xmlId, ovl);
-                putId(ovl.xmlId);
+                overlayMap.put(ovl.getXmlId(), ovl);
+                putId(ovl.getXmlId());
             }
         }
 
@@ -512,34 +512,34 @@ public class Layer {
                 }
 
                 if (ovl != null) {
-                    ovl.xmlId = ovlElem.getAttribValue("id", "AUTO_ID_" + (idCounter++));
-                    ovl.xmlOnPress = ovlElem.getChildElementValue("onPress");
-                    ovl.xmlX = Float.parseFloat(ovlElem.getChildElementValue("x", "0"));
-                    ovl.xmlY = Float.parseFloat(ovlElem.getChildElementValue("y", "0"));
-                    ovl.xmlAnchor = ovlElem.getChildElementValue("anchor", "TL");
-                    ovl.xmlHidden = Boolean.parseBoolean(ovlElem.getChildElementValue("hidden", "false"));
+                    ovl.setXmlId(ovlElem.getAttribValue("id", "AUTO_ID_" + (idCounter++)));
+                    ovl.setXmlOnPress(ovlElem.getChildElementValue("onPress"));
+                    ovl.setXmlX(Float.parseFloat(ovlElem.getChildElementValue("x", "0")));
+                    ovl.setXmlY(Float.parseFloat(ovlElem.getChildElementValue("y", "0")));
+                    ovl.setXmlAnchor(ovlElem.getChildElementValue("anchor", "TL"));
+                    ovl.setXmlHidden(Boolean.parseBoolean(ovlElem.getChildElementValue("hidden", "false")));
 
                     if (ovl instanceof OverlayImg) {
                         OverlayImg ovlImg = (OverlayImg) ovl;
 
-                        ovlImg.xmlAssetId = ovlElem.getChildElementValue("assetId");
-                        checkId(ovl.xmlId, ovlImg.xmlAssetId);
-                        ovlImg.asset = (Asset) assetMap.get(ovlImg.xmlAssetId);
+                        ovlImg.setXmlAssetId(ovlElem.getChildElementValue("assetId"));
+                        checkId(ovl.getXmlId(), ovlImg.getXmlAssetId());
+                        ovlImg.asset = (Asset) assetMap.get(ovlImg.getXmlAssetId());
 
                         if (ovlImg.asset.xmlFormat != ARXDownload.PNG && ovlImg.asset.xmlFormat != ARXDownload.JPG) {
-                            throw new Exception("Invalid format for asset in overlay '" + ovl.xmlId + "'");
+                            throw new Exception("Invalid format for asset in overlay '" + ovl.getXmlId() + "'");
                         }
                     } else if (ovl instanceof OverlayTxt) {
                         OverlayTxt ovlTxt = (OverlayTxt) ovl;
 
-                        ovlTxt.xmlText = ovlElem.getChildElementValue("text", "...");
-                        ovlTxt.xmlWidth = Float.parseFloat(ovlElem.getChildElementValue("width", "200"));
+                        ovlTxt.setXmlText(ovlElem.getChildElementValue("text", "..."));
+                        ovlTxt.setXmlWidth(Float.parseFloat(ovlElem.getChildElementValue("width", "200")));
                     }
 
                     ovl.layer = this;
 
-                    overlayMap.put(ovl.xmlId, ovl);
-                    putId(ovl.xmlId);
+                    overlayMap.put(ovl.getXmlId(), ovl);
+                    putId(ovl.getXmlId());
                 }
             }
         }

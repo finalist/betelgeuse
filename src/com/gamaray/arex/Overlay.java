@@ -1,19 +1,18 @@
 package com.gamaray.arex;
 
 import com.gamaray.arex.context.ARXContext;
-import com.gamaray.arex.gui.Bitmap;
 import com.gamaray.arex.gui.DrawWindow;
-import com.gamaray.arex.gui.TextBlock;
 
-abstract public class Overlay {
-    String xmlId;
-    String xmlAssetId;
-    String xmlOnPress;
-    float xmlX, xmlY;
-    String xmlAnchor;
-    boolean xmlHidden;
-
-    boolean show;
+public abstract class Overlay {
+    
+    
+    private String xmlId;
+    private String xmlAssetId;
+    private String xmlOnPress;
+    private float xmlX, xmlY;
+    private String xmlAnchor;
+    private boolean xmlHidden;
+    private boolean show;
 
     AnchorUtil anchoredObj = new AnchorUtil();
 
@@ -43,58 +42,72 @@ abstract public class Overlay {
             return false;
         }
     }
-}
 
-class OverlayImg extends Overlay {
-    public void draw(DrawWindow dw) {
-        if (asset.downloadStatus == ARXState.READY) {
-            if (!asset.downloadResult.isError()) {
-                Bitmap bmp = (Bitmap) asset.downloadResult.getObj();
-
-                anchoredObj.prepare(bmp, xmlAnchor);
-
-                dw.drawObject(anchoredObj, xmlX - anchoredObj.getWidth() / 2, xmlY - anchoredObj.getHeight() / 2, 0, 1);
-            }
-        }
+    public String getXmlId() {
+        return xmlId;
     }
 
-    boolean press(float x, float y, ARXContext ctx, ARXState state) {
-        boolean evtHandled = false;
-
-        if (asset.downloadStatus == ARXState.READY && xmlOnPress != null && isVisible()) {
-            if (isPressValid(x, y)) {
-                evtHandled = state.handleEvent(ctx, xmlId, xmlOnPress);
-            }
-        }
-
-        return evtHandled;
-    }
-}
-
-class OverlayTxt extends Overlay {
-    String xmlText;
-    float xmlWidth;
-    TextBlock textBlock;
-
-    public void draw(DrawWindow dw) {
-        if (textBlock == null) {
-            textBlock = new TextBlock(xmlText, 12, xmlWidth, dw);
-        }
-
-        anchoredObj.prepare(textBlock, xmlAnchor);
-
-        dw.drawObject(anchoredObj, xmlX - anchoredObj.getWidth() / 2, xmlY - anchoredObj.getHeight() / 2, 0, 1);
+    public void setXmlId(String xmlId) {
+        this.xmlId = xmlId;
     }
 
-    boolean press(float x, float y, ARXContext ctx, ARXState state) {
-        boolean evtHandled = false;
-
-        if (xmlOnPress != null && isVisible()) {
-            if (isPressValid(x, y)) {
-                evtHandled = state.handleEvent(ctx, xmlId, xmlOnPress);
-            }
-        }
-
-        return evtHandled;
+    public String getXmlOnPress() {
+        return xmlOnPress;
     }
+
+    public void setXmlOnPress(String xmlOnPress) {
+        this.xmlOnPress = xmlOnPress;
+    }
+
+    public float getXmlX() {
+        return xmlX;
+    }
+
+    public void setXmlX(float xmlX) {
+        this.xmlX = xmlX;
+    }
+
+    public float getXmlY() {
+        return xmlY;
+    }
+
+    public void setXmlY(float xmlY) {
+        this.xmlY = xmlY;
+    }
+
+    public String getXmlAnchor() {
+        return xmlAnchor;
+    }
+
+    public void setXmlAnchor(String xmlAnchor) {
+        this.xmlAnchor = xmlAnchor;
+    }
+
+    public boolean isShow() {
+        return show;
+    }
+
+    public void setShow(boolean show) {
+        this.show = show;
+    }
+
+    public boolean isXmlHidden() {
+        return xmlHidden;
+    }
+
+    public void setXmlHidden(boolean xmlHidden) {
+        this.xmlHidden = xmlHidden;
+    }
+
+    public String getXmlAssetId() {
+        return xmlAssetId;
+    }
+
+    public void setXmlAssetId(String xmlAssetId) {
+        this.xmlAssetId = xmlAssetId;
+    }
+    
+    
+    
+    
 }

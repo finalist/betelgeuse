@@ -16,6 +16,7 @@ import com.gamaray.arex.model.Feature3D;
 import com.gamaray.arex.model.FeatureImg;
 import com.gamaray.arex.model.FeatureTxt;
 import com.gamaray.arex.model.Location;
+import com.gamaray.arex.model.OverlayHtml;
 import com.gamaray.arex.xml.Element;
 
 public class Layer {
@@ -274,6 +275,8 @@ public class Layer {
                 ovl = new OverlayImg();
             } else if (overlay instanceof com.gamaray.arex.model.OverlayTxt) {
                 ovl = new OverlayTxt();
+            } else if (overlay instanceof OverlayHtml){
+                ovl = new OverlayHTML();
             }
 
             if (ovl != null) {
@@ -301,6 +304,11 @@ public class Layer {
 
                     ovlTxt.setXmlText((String) defaultIfNull(overlayTxt.getText(), "..."));
                     ovlTxt.setXmlWidth((Float) defaultIfNull(overlayTxt.getWidth(), 200.0));
+                } else if (ovl instanceof OverlayHTML) {
+                    OverlayHTML ovlHtml = (OverlayHTML) ovl;
+                    com.gamaray.arex.model.OverlayHtml overlayHtml = (com.gamaray.arex.model.OverlayHtml) overlay;
+
+                    ovlHtml.setUrl(((String) defaultIfNull(overlayHtml.getUrl(), "http://www.nu.nl")));
                 }
 
                 ovl.layer = this;

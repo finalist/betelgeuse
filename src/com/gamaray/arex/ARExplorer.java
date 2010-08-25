@@ -16,6 +16,7 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.location.LocationProvider;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.util.Log;
@@ -31,9 +32,8 @@ import com.gamaray.arex.gui.AugmentedView;
 import com.gamaray.arex.gui.CameraView;
 import com.gamaray.arex.gui.MenuItem;
 import com.gamaray.arex.io.ARXHttpInputStream;
-import com.gamaray.arex.render3d.Matrix3D;
 
-public class ARExplorer extends Activity implements SensorEventListener, LocationListener {
+public class ARExplorer extends Activity{
     private boolean fatalError = false;
     private String fatalErrorMsg;
     Exception fatalErrorEx;
@@ -51,31 +51,17 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
 
     public static final int TOOL_BAR_HEIGHT = 26;
 
-    float RTmp[] = new float[9];
-    float R[] = new float[9];
-    float I[] = new float[9];
-    float grav[] = new float[3];
-    float mag[] = new float[3];
-
-    private SensorManager sensorMgr;
-    private List<Sensor> sensors;
-    private Sensor sensorGrav, sensorMag;
+//    private SensorManager sensorMgr;
+//    private List<Sensor> sensors;
+//    private Sensor sensorGrav, sensorMag;
 
     
-//    private LocationManager locationMgr;
-    private String currentLocationProvider;
-    private boolean gpsEnabled = false;
-    private int gpsUpdates = 0;
+//    private String currentLocationProvider;
+//    private boolean gpsEnabled = false;
+//    private int gpsUpdates = 0;
 
-    int rotationHistIdx = 0;
-    Matrix3D rotationTmp = new Matrix3D();
-    Matrix3D rotationFinal = new Matrix3D();
-    Matrix3D rotationSmooth = new Matrix3D();
-    Matrix3D rotationHist[] = new Matrix3D[60];
-    Matrix3D m1 = new Matrix3D();
-    Matrix3D m2 = new Matrix3D();
-    Matrix3D m3 = new Matrix3D();
-    Matrix3D m4 = new Matrix3D();
+    
+    private ARXLocationManager locationManager=new ARXLocationManager(this);
     
     List<MenuItem> menuArray = new ArrayList<MenuItem>();
 
@@ -121,8 +107,8 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             addContentView(augmentedView, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
 
             if (!initialized) {
-                ctx = new AndroidARXContext(this);
-                drawWindow = new AndroidDrawWindow();
+                ctx = new AndroidARXContext(this,locationManager);
+                drawWindow = new AndroidDrawWindow(this);
                 view = new ARXView(ctx);
 
                 initialized = true;
@@ -142,17 +128,17 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
         
         
         try {
-            try {
-                sensorMgr.unregisterListener(this, sensorGrav);
-            } catch (Exception ignore) {
-            }
-            try {
-                sensorMgr.unregisterListener(this, sensorMag);
-            } catch (Exception ignore) {
-            }
-            sensorMgr = null;
+//            try {
+//                sensorMgr.unregisterListener(this, sensorGrav);
+//            } catch (Exception ignore) {
+//            }
+//            try {
+//                sensorMgr.unregisterListener(this, sensorMag);
+//            } catch (Exception ignore) {
+//            }
+//            sensorMgr = null;
 
-            unregisterLocationProvider();
+            locationManager.stop();
             
             try {
                 ctx.getDownloadManager().stop();
@@ -180,43 +166,42 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
         try {
             killOnError();
 
-            ctx.setAppCtx(this);
             view.doLaunch();
             view.purgeEvents();
 
-            double angleX, angleY;
+//            double angleX, angleY;
+//
+//            angleX = Math.toRadians(-90);
+//            m1.setTo(1f, 0f, 0f, 0f, (float) Math.cos(angleX), (float) -Math.sin(angleX), 0f, (float) Math.sin(angleX),
+//                    (float) Math.cos(angleX));
+//
+//            angleX = Math.toRadians(-90);
+//            angleY = Math.toRadians(-90);
+//            m2.setTo(1f, 0f, 0f, 0f, (float) Math.cos(angleX), (float) -Math.sin(angleX), 0f, (float) Math.sin(angleX),
+//                    (float) Math.cos(angleX));
+//            m3.setTo((float) Math.cos(angleY), 0f, (float) Math.sin(angleY), 0f, 1f, 0f, (float) -Math.sin(angleY), 0f,
+//                    (float) Math.cos(angleY));
+//
+//            m4.setToIdentity();
+//
+//            for (int i = 0; i < rotationHist.length; i++) {
+//                rotationHist[i] = new Matrix3D();
+//            }
 
-            angleX = Math.toRadians(-90);
-            m1.setTo(1f, 0f, 0f, 0f, (float) Math.cos(angleX), (float) -Math.sin(angleX), 0f, (float) Math.sin(angleX),
-                    (float) Math.cos(angleX));
-
-            angleX = Math.toRadians(-90);
-            angleY = Math.toRadians(-90);
-            m2.setTo(1f, 0f, 0f, 0f, (float) Math.cos(angleX), (float) -Math.sin(angleX), 0f, (float) Math.sin(angleX),
-                    (float) Math.cos(angleX));
-            m3.setTo((float) Math.cos(angleY), 0f, (float) Math.sin(angleY), 0f, 1f, 0f, (float) -Math.sin(angleY), 0f,
-                    (float) Math.cos(angleY));
-
-            m4.setToIdentity();
-
-            for (int i = 0; i < rotationHist.length; i++) {
-                rotationHist[i] = new Matrix3D();
-            }
-
-            sensorMgr = (SensorManager) getSystemService(SENSOR_SERVICE);
-
-            sensors = sensorMgr.getSensorList(Sensor.TYPE_ACCELEROMETER);
-            if (sensors.size() > 0) {
-                sensorGrav = sensors.get(0);
-            }
-
-            sensors = sensorMgr.getSensorList(Sensor.TYPE_MAGNETIC_FIELD);
-            if (sensors.size() > 0) {
-                sensorMag = sensors.get(0);
-            }
-
-            sensorMgr.registerListener(this, sensorGrav, SENSOR_DELAY_FASTEST);
-            sensorMgr.registerListener(this, sensorMag, SENSOR_DELAY_FASTEST);
+//            sensorMgr = (SensorManager) getSystemService(SENSOR_SERVICE);
+//
+//            sensors = sensorMgr.getSensorList(Sensor.TYPE_ACCELEROMETER);
+//            if (sensors.size() > 0) {
+//                sensorGrav = sensors.get(0);
+//            }
+//
+//            sensors = sensorMgr.getSensorList(Sensor.TYPE_MAGNETIC_FIELD);
+//            if (sensors.size() > 0) {
+//                sensorMag = sensors.get(0);
+//            }
+//
+//            sensorMgr.registerListener(this, sensorGrav, SENSOR_DELAY_FASTEST);
+//            sensorMgr.registerListener(this, sensorMag, SENSOR_DELAY_FASTEST);
 
             try {
                 
@@ -227,7 +212,7 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
                 wakelock.acquire();
 
                 
-                updateLocationProvider();
+                locationManager.start();
             
             } catch (Exception ex) {
                 Log.d("gamaray", "GPS Initialize Error", ex);
@@ -244,13 +229,13 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
             doError(ex);
 
             try {
-                if (sensorMgr != null) {
-                    sensorMgr.unregisterListener(this, sensorGrav);
-                    sensorMgr.unregisterListener(this, sensorMag);
-                    sensorMgr = null;
-                }
+//                if (sensorMgr != null) {
+//                    sensorMgr.unregisterListener(this, sensorGrav);
+//                    sensorMgr.unregisterListener(this, sensorMag);
+//                    sensorMgr = null;
+//                }
 
-                unregisterLocationProvider();
+                locationManager.stop();
                 
                 if (ctx != null) {
                     if (ctx.getDownloadManager() != null)
@@ -266,53 +251,54 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
         }
     }
     
-    private void unregisterLocationProvider(){
-        if (currentLocationProvider != null) {
-            LocationManager locationMgr = (LocationManager) getSystemService(LOCATION_SERVICE);            
-            locationMgr.removeUpdates(this);
-            currentLocationProvider = null;
-        }
-    }
+//    private void unregisterLocationProvider(){
+//        if (currentLocationProvider != null) {
+//            LocationManager locationMgr = (LocationManager) getSystemService(LOCATION_SERVICE);            
+//            locationMgr.removeUpdates(this);
+//            currentLocationProvider = null;
+//        }
+//    }
     
-    private void updateLocationProvider(){
-        LocationManager locationMgr = (LocationManager) getSystemService(LOCATION_SERVICE);
-        
-        Criteria criteria=new Criteria();
-        criteria.setAccuracy(Criteria.ACCURACY_FINE);
-        
-        
-        
-        String newProvider=locationMgr.getBestProvider(criteria, true);
-        if (!newProvider.equals(currentLocationProvider)){
-            locationMgr.removeUpdates(this);
-            locationMgr.requestLocationUpdates(newProvider, 100, 1, this);
-            currentLocationProvider=newProvider;
-        }
-
-        gpsEnabled = currentLocationProvider.equals(LocationManager.GPS_PROVIDER);
-
-        Location lastFix = locationMgr.getLastKnownLocation(currentLocationProvider);
-
-        synchronized (ctx.getCurLoc()) {
-            if (lastFix != null) {
-                ctx.getCurLoc().lat = lastFix.getLatitude();
-                ctx.getCurLoc().lon = lastFix.getLongitude();
-                ctx.getCurLoc().alt = lastFix.getAltitude();
-            } else {
-                ctx.getCurLoc().lat = 45.0;
-                ctx.getCurLoc().lon = -85.0;
-                ctx.getCurLoc().alt = 0.0;
-            }
-        }
-
-        GeomagneticField gmf = new GeomagneticField((float) ctx.getCurLoc().lat, (float) ctx.getCurLoc().lon,
-                (float) ctx.getCurLoc().alt, System.currentTimeMillis());
-
-        double angleY = Math.toRadians(-gmf.getDeclination());
-        m4.setTo((float) Math.cos(angleY), 0f, (float) Math.sin(angleY), 0f, 1f, 0f, (float) -Math.sin(angleY),
-                0f, (float) Math.cos(angleY));
-        ctx.setDeclination(gmf.getDeclination());   
-    }
+//    private void updateLocationProvider(){
+//        LocationManager locationMgr = (LocationManager) getSystemService(LOCATION_SERVICE);
+//        
+//        Criteria criteria=new Criteria();
+//        criteria.setAccuracy(Criteria.ACCURACY_FINE);
+//        
+//        
+//        
+//        String newProvider=locationMgr.getBestProvider(criteria, true);
+//        if (!newProvider.equals(currentLocationProvider)){
+//            locationMgr.removeUpdates(this);
+//            locationMgr.requestLocationUpdates(newProvider, 100, 1, this);
+//            currentLocationProvider=newProvider;
+//        }
+//
+//        gpsEnabled = currentLocationProvider.equals(LocationManager.GPS_PROVIDER);
+//
+//        Location lastFix = locationMgr.getLastKnownLocation(currentLocationProvider);
+//
+//        synchronized (ctx.getCurLoc()) {
+//            if (lastFix != null) {
+//                ctx.getCurLoc().lat = lastFix.getLatitude();
+//                ctx.getCurLoc().lon = lastFix.getLongitude();
+//                ctx.getCurLoc().alt = lastFix.getAltitude();
+//            } else {
+//                ctx.getCurLoc().lat = 45.0;
+//                ctx.getCurLoc().lon = -85.0;
+//                ctx.getCurLoc().alt = 0.0;
+//            }
+//        }
+//
+//        GeomagneticField gmf = new GeomagneticField((float) ctx.getCurLoc().lat, (float) ctx.getCurLoc().lon,
+//                (float) ctx.getCurLoc().alt, System.currentTimeMillis());
+//
+////        double angleY = Math.toRadians(-gmf.getDeclination());
+////        m4.setTo((float) Math.cos(angleY), 0f, (float) Math.sin(angleY), 0f, 1f, 0f, (float) -Math.sin(angleY),
+////                0f, (float) Math.cos(angleY));
+//        rotationCalculator.updateM4(gmf.getDeclination());
+//        ctx.setDeclination(gmf.getDeclination());   
+//    }
     
 
     @Override
@@ -353,71 +339,73 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
         }
     }
 
-    public void onAccuracyChanged(Sensor s, int accuracy) {
-        try {
-            killOnError();
+//    public void onAccuracyChanged(Sensor s, int accuracy) {
+//        try {
+//            killOnError();
+//
+//            if (s.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+//                if (accuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW) {
+//                    ctx.setLowCompassAccuracy(true);
+//                } else {
+//                    ctx.setLowCompassAccuracy(false);
+//                }
+//            }
+//        } catch (Exception ex) {
+//            doError(ex);
+//        }
+//    }
 
-            if (s.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-                if (accuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW) {
-                    ctx.setLowCompassAccuracy(true);
-                } else {
-                    ctx.setLowCompassAccuracy(false);
-                }
-            }
-        } catch (Exception ex) {
-            doError(ex);
-        }
-    }
-
-    public void onSensorChanged(SensorEvent evt) {
-        try {
-            killOnError();
-
-            if (evt.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                grav[0] = evt.values[0];
-                grav[1] = evt.values[1];
-                grav[2] = evt.values[2];
-
-                augmentedView.postInvalidate();
-            } else if (evt.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-                mag[0] = evt.values[0];
-                mag[1] = evt.values[1];
-                mag[2] = evt.values[2];
-
-                augmentedView.postInvalidate();
-            }
-
-            SensorManager.getRotationMatrix(RTmp, I, grav, mag);
-            SensorManager.remapCoordinateSystem(RTmp, SensorManager.AXIS_X, SensorManager.AXIS_MINUS_Z, R);
-
-            rotationTmp.setTo(R[0], R[1], R[2], R[3], R[4], R[5], R[6], R[7], R[8]);
-
-            rotationFinal.setToIdentity();
-            rotationFinal.multiply(m4);
-            rotationFinal.multiply(m1);
-            rotationFinal.multiply(rotationTmp);
-            rotationFinal.multiply(m3);
-            rotationFinal.multiply(m2);
-            rotationFinal.invert(); // TODO: use transpose() instead
-
-            rotationHist[rotationHistIdx].setTo(rotationFinal);
-            rotationHistIdx++;
-            if (rotationHistIdx >= rotationHist.length)
-                rotationHistIdx = 0;
-
-            rotationSmooth.setTo(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
-            for (int i = 0; i < rotationHist.length; i++) {
-                rotationSmooth.add(rotationHist[i]);
-            }
-            rotationSmooth.multiply(1 / (float) rotationHist.length);
-
-            synchronized (ctx.getRotationMatrix()) {
-                ctx.getRotationMatrix().setTo(rotationSmooth);
-            }
-        } catch (Exception ex) {
-            doError(ex);
-        }
-    }
+//    public void onSensorChanged(SensorEvent evt) {
+//        try {
+//            killOnError();
+//
+//            float grav[] = new float[3];
+//            float mag[] = new float[3];
+//
+//            if (evt.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+//                grav = evt.values;
+//                augmentedView.postInvalidate();
+//            } else if (evt.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+//                mag=evt.values;
+//                augmentedView.postInvalidate();
+//            }
+//            float R[] = new float[9];
+//            float I[] = new float[9];
+//            float RTmp[] = new float[9];
+//
+//            SensorManager.getRotationMatrix(RTmp, I, grav, mag);
+//            SensorManager.remapCoordinateSystem(RTmp, SensorManager.AXIS_X, SensorManager.AXIS_MINUS_Z, R);
+//
+////            calculateSmooth(R);
+////            
+////            rotationTmp.setTo(R[0], R[1], R[2], R[3], R[4], R[5], R[6], R[7], R[8]);
+////
+////            rotationFinal.setToIdentity();
+////            rotationFinal.multiply(m4);
+////            rotationFinal.multiply(m1);
+////            rotationFinal.multiply(rotationTmp);
+////            rotationFinal.multiply(m3);
+////            rotationFinal.multiply(m2);
+////            rotationFinal.invert(); // TODO: use transpose() instead
+////
+////            rotationHist[rotationHistIdx].setTo(rotationFinal);
+////            rotationHistIdx++;
+////            if (rotationHistIdx >= rotationHist.length)
+////                rotationHistIdx = 0;
+////
+////            rotationSmooth.setTo(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
+////            for (int i = 0; i < rotationHist.length; i++) {
+////                rotationSmooth.add(rotationHist[i]);
+////            }
+////            rotationSmooth.multiply(1 / (float) rotationHist.length);
+//
+//            synchronized (ctx.getRotationMatrix()) {
+//                ctx.getRotationMatrix().setTo(rotationCalculator.calculateSmooth(R));
+//            }
+//        } catch (Exception ex) {
+//            doError(ex);
+//        }
+//    }
 
     public boolean onTouchEvent(MotionEvent me) {
         try {
@@ -452,45 +440,6 @@ public class ARExplorer extends Activity implements SensorEventListener, Locatio
 
             return super.onKeyDown(keyCode, event);
         }
-    }
-
-    public void onProviderDisabled(String provider) {
-        if (provider.equals(currentLocationProvider)){
-            updateLocationProvider();
-        }
-    }
-
-    public void onProviderEnabled(String provider) {
-        updateLocationProvider();
-    }
-
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        try {
-            killOnError();
-            synchronized (ctx.getCurLoc()) {
-                ctx.getCurLoc().lat = location.getLatitude();
-                ctx.getCurLoc().lon = location.getLongitude();
-                ctx.getCurLoc().alt = location.getAltitude();
-                if (location.getProvider().equals(LocationManager.GPS_PROVIDER)){
-                    gpsUpdates++;
-                }
-            }
-        } catch (Exception ex) {
-            doError(ex);
-        }
-    }
-
-    public boolean isGpsEnabled() {
-        return gpsEnabled;
-    }
-
-    public int getGpsUpdates() {
-        return gpsUpdates;
     }
 
     public boolean isFatalError() {

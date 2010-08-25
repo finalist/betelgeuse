@@ -1,8 +1,15 @@
 package com.gamaray.arex.gui;
 
+import android.R;
+import android.app.Activity;
+import android.app.Dialog;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.view.View;
+import android.view.ViewGroup.LayoutParams;
+import android.webkit.WebView;
+import android.widget.Button;
 
 public class AndroidDrawWindow implements DrawWindow {
     private Canvas canvas;
@@ -10,12 +17,14 @@ public class AndroidDrawWindow implements DrawWindow {
     private int height;
     private Paint paint = new Paint();
     private Paint bmpPaint = new Paint();
+    private final Activity activity;
 
-    public AndroidDrawWindow() {
+    public AndroidDrawWindow(Activity activity) {
         paint.setTextSize(16);
         paint.setAntiAlias(true);
         paint.setColor(Color.BLUE);
         paint.setStyle(Paint.Style.STROKE);
+        this.activity=activity;
     }
 
     public int getWidth() {
@@ -114,4 +123,17 @@ public class AndroidDrawWindow implements DrawWindow {
     public void setCanvas(Canvas canvas) {
         this.canvas = canvas;
     }
+
+    @Override
+    public void drawUrlWindow(String url, float x, float y) {
+
+//        WebView webView = new WebView(activity);
+//        webView.loadUrl(url);
+//        
+//        activity.addContentView(webView, new LayoutParams(new Float(x).intValue(), new Float(y).intValue()));
+        
+    }
+
+    
+    
 }

@@ -3,8 +3,6 @@ package com.gamaray.arex;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -29,14 +27,14 @@ public class ARXView {
     boolean init = false;
     int width, height;
     Camera cam;
-    ARXState state = new ARXState();
+    private ARXState state = new ARXState();
 
     public static String VERSION = "1.0.10";
-    String LOCAL_SERVER = "localhost:8080";
-    String CLOUD_SERVER = "dimensions.gamaray.com";
-    String SERVER = CLOUD_SERVER;
+    // String LOCAL_SERVER = "localhost:8080";
+    // String CLOUD_SERVER = "dimensions.gamaray.com";
+    // String SERVER = CLOUD_SERVER;
     // String REDIRECT_URL = "http://" + SERVER + "/Dimensions/Redirect";
-    String HOME_URL = "gamaray://betelgeusedesigner.appspot.com/gamaray/24001.gddf";
+    private static String HOME_URL = "gamaray://betelgeusedesigner.appspot.com/gamaray/43001.gddf";
 
     // ArrayList icons = new ArrayList();
     private List<Event> events = new ArrayList<Event>();
@@ -62,14 +60,15 @@ public class ARXView {
     MenuItem miShowMessages = new MenuItem(6, "Show Messages");
     MenuItem miHideMessages = new MenuItem(7, "Hide Messages");
     MenuItem miRefresh = new MenuItem(8, "Reload");
-    MenuItem miHome = new MenuItem(9, "Home" + (SERVER.equals(LOCAL_SERVER) ? " (LOCAL)" : ""));
+    MenuItem miShowMap = new MenuItem(9, "Show Map");
+    MenuItem miHideMap = new MenuItem(10, "Hide Map");
     
     public ARXView(ARXContext ctx) {
         this.ctx = ctx;
     }
 
     public void doLaunch() {
-        state.launchNeeded = true;
+        state.setLaunchNeeded(true);
     }
 
     public boolean isInit() {
@@ -94,7 +93,7 @@ public class ARXView {
 
                 ctx.setPrefs(prefs);
             }
-            state.uid = (String) prefs.get("UID");
+            state.setUid((String) prefs.get("UID"));
 
             leftRadarLine.setTo(0, -RadarObjects.RADIUS);
             leftRadarLine.rotate(Camera.DEFAULT_VIEW_ANGLE / 2);
@@ -114,10 +113,8 @@ public class ARXView {
         if (!ctx.gpsEnabled()) {
             ARXMessages.putMessage("GPS_ENABLED", "GPS not Enabled (see Settings->Security & location->Enable GPS)",
                     ARXMessages.errorIcon, 500);
-        }
-
-        // Check if GPS signal received
-        if (!ctx.gpsSignalReceived()) {
+        } else if (!ctx.gpsSignalReceived()) {
+            // Check if GPS signal received
             ARXMessages.putMessage("GPS_WAIT", "Waiting for GPS signal", ARXMessages.worldIcon, 500);
         }
 
@@ -126,11 +123,11 @@ public class ARXView {
             ARXMessages.putMessage("COMPASS_ACCURACY", "Compass accuracy low", ARXMessages.compassIcon, 1000);
         }
 
-        if (ctx.gpsEnabled()) {
+//        if (ctx.gpsEnabled()) {
             drawDimension(dw);
-        } else {
-            purgeEvents();
-        }
+//        } else {
+//            purgeEvents();
+//        }
 
         ARXMessages.expireMessages();
         int msgCount = ARXMessages.getMessageCount();
@@ -138,7 +135,7 @@ public class ARXView {
         float msgPad = 10;
         int startMsg = 0, maxMsg = 1;
 
-        if (state.messagesVisible && msgCount > maxMsg) {
+        if (state.isMessagesVisible() && msgCount > maxMsg) {
             startMsg = msgCount - maxMsg;
         }
 
@@ -147,7 +144,7 @@ public class ARXView {
             if (!msg.init)
                 msg.init(dw, width - msgPad * 2);
 
-            if (state.messagesVisible) {
+            if (state.isMessagesVisible()) {
                 msg.showFullMessage(true);
                 msgHeight += msg.getHeight() + 1;
                 dw.drawObject(msg, msgPad, height - msgHeight - msgPad, 0, 1);
@@ -163,8 +160,8 @@ public class ARXView {
     }
 
     public void drawDimension(DrawWindow dw) {
-        ctx.getRotationMatrix(cam.transform);
-        ctx.getCurrentLocation(state.curFix);
+        cam.transform.setTo(ctx.getRotationMatrix());
+        state.setCurFix(ctx.getCurrentLocation());
 
         // Determine bearing
         // TODO: fix math
@@ -172,27 +169,27 @@ public class ARXView {
         rotationInv.transpose();
         looking.setTo(1, 0, 0);
         looking.transform(rotationInv);
-        state.curBearing = ARXUtil.getAngle(0, 0, looking.x, looking.z);
-        state.curBearing = ((int) state.curBearing + 360) % 360;
+        state.setCurBearing(ARXUtil.getAngle(0, 0, looking.x, looking.z));
+        state.setCurBearing(((int) state.getCurBearing() + 360) % 360);
 
         // Determine pitch
         // TODO: fix math
         rotationInv.transpose();
         looking.setTo(0, 1, 0);
         looking.transform(rotationInv);
-        state.curPitch = -ARXUtil.getAngle(0, 0, looking.y, looking.z);
+        state.setCurPitch( -ARXUtil.getAngle(0, 0, looking.y, looking.z));
 
-        state.screenWidth = width;
-        state.screenHeight = height;
+        state.setScreenWidth(width);
+        state.setScreenHeight(height);
         
 
-        if (ctx.getLaunchUrl().equals("") || ctx.getLaunchUrl().equals(state.launchUrl)) {
-            state.launchNeeded = false;
+        if (ctx.getLaunchUrl().equals("") || ctx.getLaunchUrl().equals(state.getLaunchUrl())) {
+            state.setLaunchNeeded(false);
         }
 
         // Load Layer
-        if (state.nextLayerStatus == ARXState.NOT_STARTED ||
-                (state.nextLayerStatus == ARXState.READY && state.launchNeeded)) {
+        if (state.getNextLayerStatus() == ARXState.NOT_STARTED ||
+                (state.getNextLayerStatus() == ARXState.READY && state.isLaunchNeeded())) {
             /*
              * DownloadJobRequest request = new DownloadJobRequest();
              * request.format = ARXDownload.GAMADIM; request.url = REDIRECT_URL;
@@ -217,62 +214,64 @@ public class ARXView {
             DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, requestUrl, state.getParams(
                     "init", "NULL"), false);
 
-            state.launchNeeded = false;
-            state.launchUrl = ctx.getLaunchUrl();
+            state.setLaunchNeeded(false);
+            state.setLaunchUrl(ctx.getLaunchUrl());
 
-            state.downloadJobId = ctx.getARXDownload().submitJob(request);
+            state.setDownloadJobId(ctx.getARXDownload().submitJob(request));
 
-            state.nextLayerStatus = ARXState.JOB_SUBMITTED;
-        } else if (state.nextLayerStatus == ARXState.JOB_SUBMITTED) {
-            ARXMessages.putMessage("LOADING_" + state.downloadJobId, "Dimension loading", ARXMessages.refreshIcon, 500);
+            state.setNextLayerStatus(ARXState.JOB_SUBMITTED);
+        } 
+        if (state.getNextLayerStatus() == ARXState.JOB_SUBMITTED) {
+            ARXMessages.putMessage("LOADING_" + state.getDownloadJobId(), "Dimension loading", ARXMessages.refreshIcon, 500);
 
-            if (ctx.getARXDownload().isJobComplete(state.downloadJobId)) {
-                state.downloadResult = ctx.getARXDownload().getJobResult(state.downloadJobId);
+            if (ctx.getARXDownload().isJobComplete(state.getDownloadJobId())) {
+                state.setDownloadResult(ctx.getARXDownload().getJobResult(state.getDownloadJobId()));
 
-                state.nextLayerStatus = ARXState.TRANSITION;
+                state.setNextLayerStatus(ARXState.TRANSITION);
             }
-        } else if (state.nextLayerStatus == ARXState.TRANSITION) {
+        } 
+        if (state.getNextLayerStatus() == ARXState.TRANSITION) {
             ctx.getARXDownload().pause();
             ctx.getARXRender().pause();
 
             if (ctx.getARXDownload().getState() == ARXDownload.PAUSED &&
                     ctx.getARXRender().getState() == ARXRender.PAUSED) {
-                if (state.downloadResult.isError()) {
-                    if (state.retryCount < 10) {
-                        ARXMessages.removeMessage("LOADING_" + state.downloadJobId);
-                        ARXMessages.removeMessage("ERROR_" + state.downloadJobId);
+                if (state.getDownloadResult().isError()) {
+                    if (state.getRetryCount() < 10) {
+                        ARXMessages.removeMessage("LOADING_" + state.getDownloadJobId());
+                        ARXMessages.removeMessage("ERROR_" + state.getDownloadJobId());
 
-                        DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, state.downloadResult
-                                .getErrorRequest().getUrl(), state.downloadResult.getErrorRequest().getParams(),
-                                state.downloadResult.getErrorRequest().isCacheable());
-                        state.downloadJobId = ctx.getARXDownload().submitJob(request);
+                        DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, state.getDownloadResult()
+                                .getErrorRequest().getUrl(), state.getDownloadResult().getErrorRequest().getParams(),
+                                state.getDownloadResult().getErrorRequest().isCacheable());
+                        state.setDownloadJobId(ctx.getARXDownload().submitJob(request));
 
-                        state.nextLayerStatus = ARXState.JOB_SUBMITTED;
-                        state.retryCount++;
+                        state.setNextLayerStatus(ARXState.JOB_SUBMITTED);
+                        state.setRetryCount(state.getRetryCount()+1);
 
-                        ARXMessages.putMessage("ERROR_" + state.downloadJobId,
-                                "Error: " + state.downloadResult.getErrorMsg(), ARXMessages.warningIcon,
+                        ARXMessages.putMessage("ERROR_" + state.getDownloadJobId(),
+                                "Error: " + state.getDownloadResult().getErrorMsg(), ARXMessages.warningIcon,
                                 Integer.MAX_VALUE);
 
-                        ARXMessages.putMessage("LOADING_" + state.downloadJobId, "Dimension loading (retry #" +
-                                state.retryCount + ")", ARXMessages.refreshIcon, Integer.MAX_VALUE);
+                        ARXMessages.putMessage("LOADING_" + state.getDownloadJobId(), "Dimension loading (retry #" +
+                                state.getRetryCount() + ")", ARXMessages.refreshIcon, Integer.MAX_VALUE);
                     } else {
-                        state.nextLayerStatus = ARXState.READY;
-                        state.layer = new Layer();
+                        state.setNextLayerStatus(ARXState.READY);
+                        state.setLayer(new Layer());
 
-                        ARXMessages.removeMessage("LOADING_" + state.downloadJobId);
+                        ARXMessages.removeMessage("LOADING_" + state.getDownloadJobId());
 
-                        ARXMessages.putMessage("FATAL_ERROR_" + state.downloadJobId, "Unable to load dimension: " +
-                                state.downloadResult.getErrorRequest().getUrl(), ARXMessages.errorIcon,
+                        ARXMessages.putMessage("FATAL_ERROR_" + state.getDownloadJobId(), "Unable to load dimension: " +
+                                state.getDownloadResult().getErrorRequest().getUrl(), ARXMessages.errorIcon,
                                 Integer.MAX_VALUE);
                     }
                 } else {
                     // Layer oldLayer = state.layer;
-                    Layer newLayer = (Layer) state.downloadResult.getObj();
+                    Layer newLayer = (Layer) state.getDownloadResult().getObj();
 
-                    ARXMessages.removeMessage("ERROR_" + state.downloadJobId);
+                    ARXMessages.removeMessage("ERROR_" + state.getDownloadJobId());
 
-                    ARXMessages.removeMessage("LOADING_" + state.downloadJobId);
+                    ARXMessages.removeMessage("LOADING_" + state.getDownloadJobId());
 
                     // ARXMessages.putMessage("LOADING_COMPLETE_" +
                     // state.downloadJobId,
@@ -285,7 +284,7 @@ public class ARXView {
 
                     // Transfer valid renders
 
-                    for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
+                    for (Placemark pm : state.getLayer().getZOrderedPlacemarks()) {
                         if (pm instanceof Placemark3D) {
                             Placemark3D src = (Placemark3D) pm;
                             Placemark3D dest = (Placemark3D) newLayer.getPlacemark(src.xmlId);
@@ -297,7 +296,7 @@ public class ARXView {
                     }
 
                     // Transfer valid downloads
-                    for (Asset das : state.layer.getAssets()) {
+                    for (Asset das : state.getLayer().getAssets()) {
                         Asset dest = (Asset) newLayer.getAsset(das.xmlId);
                         if (dest != null) {
                             das.copyDownloadState(dest);
@@ -306,17 +305,17 @@ public class ARXView {
 
                     // Set layer creation time and location
                     newLayer.creationTime = System.currentTimeMillis();
-                    newLayer.creationLoc.setTo(state.curFix);
+                    newLayer.creationLoc.setTo(state.getCurFix());
 
                     // Show radar if available
                     if (newLayer.xmlRadarAvailable)
-                        state.radarVisible = true;
+                        state.setRadarVisible(true);
                     if (newLayer.xmlHasRadarRange)
                         radarDialog.setRange(newLayer.xmlRadarRange);
 
-                    state.layer = newLayer;
-                    state.nextLayerStatus = ARXState.READY;
-                    state.retryCount = 0;
+                    state.setLayer(newLayer);
+                    state.setNextLayerStatus(ARXState.READY);
+                    state.setRetryCount(0);
                 }
 
                 ctx.getARXDownload().restart();
@@ -324,9 +323,9 @@ public class ARXView {
             }
         }
 
-        for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
+        for (Placemark pm : state.getLayer().getZOrderedPlacemarks()) {
             // Update placemarks
-            pm.updateState(state.curFix, System.currentTimeMillis());
+            pm.updateState(state.getCurFix(), System.currentTimeMillis());
 
             // Prepare placemarks for draw
             pm.prepareDraw(cam);
@@ -334,12 +333,12 @@ public class ARXView {
 
 
         // Draw placemarks
-        for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
+        for (Placemark pm : state.getLayer().getZOrderedPlacemarks()) {
             pm.draw(dw);
         }
 
         // Update asset download status
-        for (Asset das : state.layer.getAssets()) {
+        for (Asset das : state.getLayer().getAssets()) {
 
             das.isDownloadJobActive = false;
             if (das.downloadStatus == ARXState.JOB_SUBMITTED) {
@@ -356,9 +355,9 @@ public class ARXView {
             }
         }
 
-        if (state.nextLayerStatus == ARXState.READY) {
+        if (state.getNextLayerStatus() == ARXState.READY) {
             // Update renders
-            for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
+            for (Placemark pm : state.getLayer().getZOrderedPlacemarks()) {
 
                 if (pm instanceof Placemark3D) {
                     ((Placemark3D) pm).updateRenders(cam, ctx);
@@ -366,13 +365,13 @@ public class ARXView {
             }
 
             // Handle show actions
-            for (Overlay ovl : state.layer.getOverlays()) {
+            for (Overlay ovl : state.getLayer().getOverlays()) {
                 ovl.setShow(false);
             }
 
             float minDist = Float.MAX_VALUE;
             Placemark closestPM = null;
-            for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
+            for (Placemark pm : state.getLayer().getZOrderedPlacemarks()) {
 
                 if (minDist > pm.distToCenter && pm.distToCenter < 50 && pm.xmlShowOnFocus != null) {
                     minDist = pm.distToCenter;
@@ -384,14 +383,14 @@ public class ARXView {
                 String ovlIds[] = closestPM.xmlShowOnFocus.split(",");
 
                 for (int i = 0; i < ovlIds.length; i++) {
-                    Overlay ovl = (Overlay) state.layer.overlayMap.get(ovlIds[i].trim());
+                    Overlay ovl = (Overlay) state.getLayer().overlayMap.get(ovlIds[i].trim());
                     if (ovl != null)
                         ovl.setShow(true);
                 }
             }
 
             // Draw Overlays
-            for (Overlay ovl : state.layer.getOverlays()) {
+            for (Overlay ovl : state.getLayer().getOverlays()) {
 
                 if (ovl.isVisible())
                     ovl.draw(dw);
@@ -399,7 +398,7 @@ public class ARXView {
 
             // Request asset downloads
             boolean allAssetsDownloaded = true;
-            for (Asset das : state.layer.getAssets()) {
+            for (Asset das : state.getLayer().getAssets()) {
 
                 das.isDownloadJobActive = false;
                 if (das.downloadStatus == ARXState.NOT_STARTED) {
@@ -441,25 +440,25 @@ public class ARXView {
             }
 
             // Set assetDownloadTime
-            if (allAssetsDownloaded && !state.layer.allAssetsDownloaded) {
-                state.layer.allAssetsDownloaded = true;
-                state.layer.assetDownloadTime = System.currentTimeMillis();
+            if (allAssetsDownloaded && !state.getLayer().allAssetsDownloaded) {
+                state.getLayer().allAssetsDownloaded = true;
+                state.getLayer().assetDownloadTime = System.currentTimeMillis();
 
-                ARXMessages.putMessage("ASSETS_LOADING_COMPLETE", "Dimension '" + state.layer.xmlName + "' loaded", "",
+                ARXMessages.putMessage("ASSETS_LOADING_COMPLETE", "Dimension '" + state.getLayer().xmlName + "' loaded", "",
                         ARXMessages.refreshCompleteIcon, 3000, true);
             }
 
             if (!allAssetsDownloaded) {
-                ARXMessages.putMessage("ASSETS_LOADING", "Dimension '" + state.layer.xmlName + "' loading",
+                ARXMessages.putMessage("ASSETS_LOADING", "Dimension '" + state.getLayer().xmlName + "' loading",
                         ARXMessages.refreshIcon, 500);
             }
         }
 
         // Draw Radar
-        if (state.radarVisible && state.layer.xmlRadarAvailable) {
+        if (state.isRadarVisible() && state.getLayer().xmlRadarAvailable) {
             String dirTxt = "";
-            int bearing = (int) state.curBearing;
-            int range = (int) (state.curBearing / (360f / 16f));
+            int bearing = (int) state.getCurBearing();
+            int range = (int) (state.getCurBearing() / (360f / 16f));
             if (range == 15 || range == 0)
                 dirTxt = "N";
             else if (range == 1 || range == 2)
@@ -479,7 +478,7 @@ public class ARXView {
 
             radarObjects.state = state;
             radarObjects.range = radarDialog.getRange();
-            dw.drawObject(radarObjects, radarX, radarY, -state.curBearing, 1);
+            dw.drawObject(radarObjects, radarX, radarY, -state.getCurBearing(), 1);
             dw.setFill(false);
             dw.setColor(Color.argb(150, 0, 220, 0));
             dw.drawLine(leftRadarLine.x, leftRadarLine.y, radarX + RadarObjects.RADIUS, radarY + RadarObjects.RADIUS);
@@ -492,19 +491,19 @@ public class ARXView {
         }
 
         // Check for time and distance refresh
-        if (state.nextLayerStatus == ARXState.READY) {
+        if (state.getNextLayerStatus() == ARXState.READY) {
             String evtName = null;
-            if (state.layer.refreshOnDistance(state.curFix))
+            if (state.getLayer().refreshOnDistance(state.getCurFix()))
                 evtName = "refreshOnDistance";
-            if (state.layer.refreshOnTime(System.currentTimeMillis()))
+            if (state.getLayer().refreshOnTime(System.currentTimeMillis()))
                 evtName = "refreshOnTime";
 
             if (evtName != null) {
-                DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, state.layer.xmlRefreshUrl,
+                DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, state.getLayer().xmlRefreshUrl,
                         state.getParams(evtName, "NULL"), false);
-                state.downloadJobId = ctx.getARXDownload().submitJob(request);
+                state.setDownloadJobId(ctx.getARXDownload().submitJob(request));
 
-                state.nextLayerStatus = ARXState.JOB_SUBMITTED;
+                state.setNextLayerStatus(ARXState.JOB_SUBMITTED);
             }
         }
 
@@ -537,22 +536,22 @@ public class ARXView {
             dw.setFill(false);
             dw.drawRectangle(infoX, infoY, infoW, infoH);
 
-            String refreshDistanceTxt = ARXUtil.formatDistance((float) state.layer.calcRefreshDistance(state.curFix));
-            String validRangeTxt = (state.layer.xmlHasRefreshDistance) ? ARXUtil
-                    .formatDistance(state.layer.xmlValidWithinRange) : "NA";
+            String refreshDistanceTxt = ARXUtil.formatDistance((float) state.getLayer().calcRefreshDistance(state.getCurFix()));
+            String validRangeTxt = (state.getLayer().xmlHasRefreshDistance) ? ARXUtil
+                    .formatDistance(state.getLayer().xmlValidWithinRange) : "NA";
 
-            String refreshTimeTxt = ((System.currentTimeMillis() - state.layer.creationTime) / 1000) + "s";
-            String validForTxt = (state.layer.xmlHasRefreshTime) ? (state.layer.xmlValidFor / 1000) + "s" : "NA";
+            String refreshTimeTxt = ((System.currentTimeMillis() - state.getLayer().creationTime) / 1000) + "s";
+            String validForTxt = (state.getLayer().xmlHasRefreshTime) ? (state.getLayer().xmlValidFor / 1000) + "s" : "NA";
 
-            dw.drawText(infoCurX, infoCurY, "Dimension: " + state.layer.xmlName);
+            dw.drawText(infoCurX, infoCurY, "Dimension: " + state.getLayer().xmlName);
             infoCurY += infoLineHeight * 2;
-            dw.drawText(infoCurX, infoCurY, "Latitude: " + state.curFix.lat);
+            dw.drawText(infoCurX, infoCurY, "Latitude: " + state.getCurFix().lat);
             infoCurY += infoLineHeight;
-            dw.drawText(infoCurX, infoCurY, "Longitude: " + state.curFix.lon);
+            dw.drawText(infoCurX, infoCurY, "Longitude: " + state.getCurFix().lon);
             infoCurY += infoLineHeight;
-            dw.drawText(infoCurX, infoCurY, "Altitude: " + ARXUtil.formatDistance((float) state.curFix.alt));
+            dw.drawText(infoCurX, infoCurY, "Altitude: " + ARXUtil.formatDistance((float) state.getCurFix().alt));
             infoCurY += infoLineHeight;
-            dw.drawText(infoCurX, infoCurY, "Bearing: " + state.curBearing + ((char) 176));
+            dw.drawText(infoCurX, infoCurY, "Bearing: " + state.getCurBearing() + ((char) 176));
             infoCurY += infoLineHeight;
             dw.drawText(infoCurX, infoCurY, "Declination: " + ctx.getDeclination() + ((char) 176));
             infoCurY += infoLineHeight;
@@ -570,7 +569,7 @@ public class ARXView {
             float radarDialogY = height / 2 - radarDialog.getHeight() / 2;
             dw.drawObject(radarDialog, radarDialogX, radarDialogY, 0, 1);
 
-            if (evt != null && evt.type == Event.CLICK && state.radarVisible && state.layer.xmlRadarAvailable) {
+            if (evt != null && evt.type == Event.CLICK && state.isRadarVisible() && state.getLayer().xmlRadarAvailable) {
                 ClickEvent radarEvt = new ClickEvent(((ClickEvent) evt).x - radarDialogX, ((ClickEvent) evt).y -
                         radarDialogY);
 
@@ -590,23 +589,23 @@ public class ARXView {
         boolean evtHandled = true;
 
         if (evt.id == miHideRadar.id) {
-            state.radarVisible = false;
+            state.setRadarVisible(false);
         } else if (evt.id == miShowRadar.id) {
-            state.radarVisible = true;
+            state.setRadarVisible(true);
         } else if (evt.id == miHideDistances.id) {
-            state.layer.distancesVisible = false;
+            state.getLayer().distancesVisible = false;
         } else if (evt.id == miShowDistances.id) {
-            state.layer.distancesVisible = true;
+            state.getLayer().distancesVisible = true;
         } else if (evt.id == miHideMessages.id) {
-            state.messagesVisible = false;
+            state.setMessagesVisible(false);
         } else if (evt.id == miShowMessages.id) {
-            state.messagesVisible = true;
+            state.setMessagesVisible(true);
         } else if (evt.id == miHideInfo.id) {
             dialogState = NO_DIALOG;
         } else if (evt.id == miShowInfo.id) {
             dialogState = INFO_DIALOG;
         } else if (evt.id == miRefresh.id) {
-            if (state.nextLayerStatus == ARXState.READY) {
+            if (state.getNextLayerStatus() == ARXState.READY) {
                 ctx.getARXDownload().emptyCache();
                 ARXMessages.clearAllMessages();
 
@@ -626,8 +625,8 @@ public class ARXView {
                  */
 
                 String requestUrl;
-                if (!state.launchUrl.equals("")) {
-                    requestUrl = state.launchUrl;
+                if (!state.getLaunchUrl().equals("")) {
+                    requestUrl = state.getLaunchUrl();
                 } else {
                     requestUrl = HOME_URL;
                 }
@@ -635,38 +634,38 @@ public class ARXView {
                 DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, requestUrl, state.getParams(
                         "init", "NULL"), false);
 
-                state.launchNeeded = false;
-                state.launchUrl = ctx.getLaunchUrl();
+                state.setLaunchNeeded(false);
+                state.setLaunchUrl(ctx.getLaunchUrl());
 
-                state.downloadJobId = ctx.getARXDownload().submitJob(request);
+                state.setDownloadJobId(ctx.getARXDownload().submitJob(request));
 
-                state.nextLayerStatus = ARXState.JOB_SUBMITTED;
+                state.setNextLayerStatus(ARXState.JOB_SUBMITTED);
             }
-        } else if (evt.id == miHome.id) {
-            if (state.nextLayerStatus == ARXState.READY) {
-                ctx.getARXDownload().emptyCache();
-                ARXMessages.clearAllMessages();
-
-                /*
-                 * DownloadJobRequest request = new DownloadJobRequest();
-                 * request.format = ARXDownload.GAMADIM; request.url =
-                 * REDIRECT_URL; request.cacheable = false; request.params =
-                 * state.getParams("init","NULL");
-                 * 
-                 * state.launchUrl = ""; state.downloadJobId =
-                 * ctx.getARXDownload().submitJob(request);
-                 * 
-                 * state.nextLayerStatus = ARXState.JOB_SUBMITTED;
-                 */
-
-                DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, HOME_URL, state.getParams(
-                        "init", "NULL"), false);
-
-                state.launchUrl = "";
-                state.downloadJobId = ctx.getARXDownload().submitJob(request);
-
-                state.nextLayerStatus = ARXState.JOB_SUBMITTED;
-            }
+//        } else if (evt.id == miHome.id) {
+//            if (state.getNextLayerStatus() == ARXState.READY) {
+//                ctx.getARXDownload().emptyCache();
+//                ARXMessages.clearAllMessages();
+//
+//                /*
+//                 * DownloadJobRequest request = new DownloadJobRequest();
+//                 * request.format = ARXDownload.GAMADIM; request.url =
+//                 * REDIRECT_URL; request.cacheable = false; request.params =
+//                 * state.getParams("init","NULL");
+//                 * 
+//                 * state.launchUrl = ""; state.downloadJobId =
+//                 * ctx.getARXDownload().submitJob(request);
+//                 * 
+//                 * state.nextLayerStatus = ARXState.JOB_SUBMITTED;
+//                 */
+//
+//                DownloadJobRequest request = new DownloadJobRequest(ARXDownload.GAMADIM, HOME_URL, state.getParams(
+//                        "init", "NULL"), false);
+//
+//                state.setLaunchUrl("");
+//                state.setDownloadJobId(ctx.getARXDownload().submitJob(request));
+//
+//                state.setNextLayerStatus(ARXState.JOB_SUBMITTED);
+//            }
         }
 
         return evtHandled;
@@ -675,7 +674,7 @@ public class ARXView {
     boolean handleClickEvent(ClickEvent evt) {
         boolean evtHandled = false;
 
-        if (state.radarVisible && state.layer.xmlRadarAvailable) {
+        if (state.isRadarVisible() && state.getLayer().xmlRadarAvailable) {
             if (evt.x > radarX && evt.x < radarX + radarObjects.getWidth() && evt.y > radarY &&
                     evt.y < radarY + radarObjects.getHeight()) {
                 dialogState = RADAR_DIALOG;
@@ -685,16 +684,16 @@ public class ARXView {
         }
 
         // Handle event
-        if (state.nextLayerStatus == ARXState.READY) {
+        if (state.getNextLayerStatus() == ARXState.READY) {
             // Loop through overlays
-            Iterator<Overlay> overlayIt = state.layer.getOverlays().iterator();
+            Iterator<Overlay> overlayIt = state.getLayer().getOverlays().iterator();
             while (!evtHandled && overlayIt.hasNext()) {
                 Overlay ovl = overlayIt.next();
                 evtHandled = ovl.press(evt.x, evt.y, ctx, state);
             }
 
             // TODO:these should also be ordered according to distance.
-            Iterator<Placemark> placemarkIt = state.layer.getZOrderedPlacemarks().iterator();
+            Iterator<Placemark> placemarkIt = state.getLayer().getZOrderedPlacemarks().iterator();
             while (!evtHandled && placemarkIt.hasNext()) {
                 Placemark pm = placemarkIt.next();
                 evtHandled = pm.press(evt.x, evt.y, ctx, state);
@@ -731,26 +730,26 @@ public class ARXView {
         else
             menu.add(miShowInfo);
 
-        if (state.layer.xmlRadarAvailable) {
+        if (state.getLayer().xmlRadarAvailable) {
             // if (state.radarVisible)
             // menu.add(miHideRadar);
             // else
             // menu.add(miShowRadar);
         }
 
-        if (state.layer.distancesVisible)
+        if (state.getLayer().distancesVisible)
             menu.add(miHideDistances);
         else
             menu.add(miShowDistances);
 
-        if (state.messagesVisible)
+        if (state.isMessagesVisible())
             menu.add(miHideMessages);
         else
             menu.add(miShowMessages);
 
-        if (state.nextLayerStatus == ARXState.READY) {
+        if (state.getNextLayerStatus() == ARXState.READY) {
             menu.add(miRefresh);
-            menu.add(miHome);
+//            menu.add(miHome);
         }
     }
 
@@ -938,7 +937,7 @@ class RadarObjects implements Drawable {
 
         //TODO:these should also be ordered.
         
-        for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
+        for (Placemark pm : state.getLayer().getZOrderedPlacemarks()) {
             float x = pm.obj.location.x / scale;
             float y = pm.obj.location.z / scale;
 

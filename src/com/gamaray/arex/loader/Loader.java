@@ -58,7 +58,12 @@ public class Loader {
             // TODO Auto-generated catch block
             e.printStackTrace();
         } finally {
-            // TODO : close connection ?
+            try {
+                inputStream.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
         }
         return null;
 

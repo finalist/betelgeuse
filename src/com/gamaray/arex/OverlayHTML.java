@@ -4,13 +4,12 @@ import com.gamaray.arex.context.ARXContext;
 import com.gamaray.arex.gui.DrawWindow;
 
 public class OverlayHTML extends Overlay {
-    
+
     private String url;
 
     @Override
     public void draw(DrawWindow dw) {
-        
-        
+        dw.drawUrlWindow(url, getXmlX(), getXmlY());
     }
 
     @Override
@@ -29,7 +28,5 @@ public class OverlayHTML extends Overlay {
     public void setUrl(String url) {
         this.url = url;
     }
-    
-    
 
 }

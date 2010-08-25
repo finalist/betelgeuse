@@ -1,5 +1,7 @@
 package com.gamaray.arex.render3d;
 
+import java.util.Collection;
+
 public class Matrix3D {
     public float a1, a2, a3;
     public float b1, b2, b3;
@@ -171,4 +173,36 @@ public class Matrix3D {
         return "[ (" + a1 + "," + a2 + "," + a3 + ") (" + b1 + "," + b2 + "," + b3 + ") (" + c1 + "," + c2 + "," + c3 +
                 ") ]";
     }
+    
+    public boolean isValid(){
+        boolean valid=true;
+        valid&=!Float.isNaN(a1);
+        valid&=!Float.isNaN(a2);
+        valid&=!Float.isNaN(a3);
+
+        valid&=!Float.isNaN(b1);
+        valid&=!Float.isNaN(b2);
+        valid&=!Float.isNaN(b3);
+
+        valid&=!Float.isNaN(c1);
+        valid&=!Float.isNaN(c2);
+        valid&=!Float.isNaN(c3);
+        
+        return valid;
+    }
+    
+    public static Matrix3D average(Collection<Matrix3D> set){
+        Matrix3D average = new Matrix3D();
+        average.setTo(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
+        int hist=0;
+        for (Matrix3D matrix3d : set) {
+            if(matrix3d.isValid()){ 
+                average.add(matrix3d);
+                hist++;
+            }
+        }
+        average.multiply(1 / (float) hist);
+        return average;
+    }
+   
 }

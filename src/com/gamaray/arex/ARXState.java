@@ -6,31 +6,31 @@ import com.gamaray.arex.loader.DownloadJobRequest;
 import com.gamaray.arex.loader.DownloadJobResult;
 
 public class ARXState {
-    public static int NOT_STARTED = 0; // No result ready, job not submitted
-    public static int JOB_SUBMITTED = 1; // Job submitted
-    public static int TRANSITION = 2; // Job complete, ready to switch to new
+    public final static int NOT_STARTED = 0; // No result ready, job not submitted
+    public final static int JOB_SUBMITTED = 1; // Job submitted
+    public final static int TRANSITION = 2; // Job complete, ready to switch to new
                                       // result
-    public static int READY = 3; // Transition complete, new result ready to use
-    public static int ERROR = 4; // Transition complete, new result ready to use
+    public final static int READY = 3; // Transition complete, new result ready to use
+    public final static int ERROR = 4; // Transition complete, new result ready to use
 
-    int retryCount = 0;
+    private int retryCount = 0;
 
     // Download properties
-    int nextLayerStatus = ARXState.NOT_STARTED;
-    String downloadJobId;
-    DownloadJobResult downloadResult;
+    private int nextLayerStatus = ARXState.NOT_STARTED;
+    private String downloadJobId;
+    private DownloadJobResult downloadResult;
 
-    public GeoPoint curFix = new GeoPoint();
-    public float curBearing, curPitch;
-    public float screenWidth, screenHeight;
-    String uid;
+    private GeoPoint curFix = new GeoPoint();
+    private float curBearing, curPitch;
+    private float screenWidth, screenHeight;
+    private String uid;
 
-    public boolean launchNeeded = false;
-    public String launchUrl = "";
+    private boolean launchNeeded = false;
+    private String launchUrl = "";
 
-    boolean radarVisible = true, messagesVisible = true;
+    private boolean radarVisible = true, messagesVisible = true;
 
-    Layer layer = new Layer();
+    private Layer layer = new Layer();
 
     boolean handleEvent(ARXContext ctx, String xmlId, String xmlOnPress) {
         boolean evtHandled = false;
@@ -69,4 +69,127 @@ public class ARXState {
                 (int) screenWidth + "&height=" + (int) screenHeight + "&uid=" + uid + "&time=" +
                 System.currentTimeMillis();
     }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public int getNextLayerStatus() {
+        return nextLayerStatus;
+    }
+
+    public void setNextLayerStatus(int nextLayerStatus) {
+        this.nextLayerStatus = nextLayerStatus;
+    }
+
+    public String getDownloadJobId() {
+        return downloadJobId;
+    }
+
+    public void setDownloadJobId(String downloadJobId) {
+        this.downloadJobId = downloadJobId;
+    }
+
+    public DownloadJobResult getDownloadResult() {
+        return downloadResult;
+    }
+
+    public void setDownloadResult(DownloadJobResult downloadResult) {
+        this.downloadResult = downloadResult;
+    }
+
+    public GeoPoint getCurFix() {
+        return curFix;
+    }
+
+    public void setCurFix(GeoPoint curFix) {
+        this.curFix = curFix;
+    }
+
+    public float getCurBearing() {
+        return curBearing;
+    }
+
+    public void setCurBearing(float curBearing) {
+        this.curBearing = curBearing;
+    }
+
+    public float getCurPitch() {
+        return curPitch;
+    }
+
+    public void setCurPitch(float curPitch) {
+        this.curPitch = curPitch;
+    }
+
+    public float getScreenWidth() {
+        return screenWidth;
+    }
+
+    public void setScreenWidth(float screenWidth) {
+        this.screenWidth = screenWidth;
+    }
+
+    public float getScreenHeight() {
+        return screenHeight;
+    }
+
+    public void setScreenHeight(float screenHeight) {
+        this.screenHeight = screenHeight;
+    }
+
+    public String getUid() {
+        return uid;
+    }
+
+    public void setUid(String uid) {
+        this.uid = uid;
+    }
+
+    public boolean isLaunchNeeded() {
+        return launchNeeded;
+    }
+
+    public void setLaunchNeeded(boolean launchNeeded) {
+        this.launchNeeded = launchNeeded;
+    }
+
+    public String getLaunchUrl() {
+        return launchUrl;
+    }
+
+    public void setLaunchUrl(String launchUrl) {
+        this.launchUrl = launchUrl;
+    }
+
+    public boolean isRadarVisible() {
+        return radarVisible;
+    }
+
+    public void setRadarVisible(boolean radarVisible) {
+        this.radarVisible = radarVisible;
+    }
+
+    public boolean isMessagesVisible() {
+        return messagesVisible;
+    }
+
+    public void setMessagesVisible(boolean messagesVisible) {
+        this.messagesVisible = messagesVisible;
+    }
+
+    public Layer getLayer() {
+        return layer;
+    }
+
+    public void setLayer(Layer layer) {
+        this.layer = layer;
+    }
+    
+    
+    
 }

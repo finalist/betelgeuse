@@ -1,7 +1,6 @@
 package com.gamaray.arex.context;
 
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
 
 import com.gamaray.arex.ARXDownload;
@@ -17,9 +16,9 @@ public interface ARXContext {
 
     public ARXRender getARXRender();
 
-    public void getRotationMatrix(Matrix3D dest);
+    public Matrix3D getRotationMatrix();
 
-    public void getCurrentLocation(GeoPoint dest);
+    public GeoPoint getCurrentLocation();
 
     public String getLaunchUrl();
 

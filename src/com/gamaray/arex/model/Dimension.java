@@ -1,5 +1,6 @@
 package com.gamaray.arex.model;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 public class Dimension {
@@ -39,6 +40,10 @@ public class Dimension {
         this.overlays = overlays;
         this.playSoundUrl = playSoundUrl;
         this.waitForAssets = waitForAssets;
+        if (overlays==null){
+            overlays=new ArrayList<Overlay>();
+        }
+        overlays.add(new OverlayHtml("342342", "BL", 200f, 200f, null, false, 200f, 200f, "http://www.gloweindhoven.nl/glow2009/projects/proj_19/nl_project.htm"));
     }
 
     public String getName() {

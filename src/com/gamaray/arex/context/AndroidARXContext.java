@@ -23,12 +23,12 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.location.Location;
-import android.location.LocationManager;
 import android.net.Uri;
 import android.util.Log;
 
 import com.gamaray.arex.ARExplorer;
 import com.gamaray.arex.ARXDownload;
+import com.gamaray.arex.ARXLocationManager;
 import com.gamaray.arex.ARXRender;
 import com.gamaray.arex.geo.GeoPoint;
 import com.gamaray.arex.gui.AndroidBitmap;
@@ -40,49 +40,55 @@ import com.gamaray.arex.xml.AndroidXMLHandler;
 
 public class AndroidARXContext implements ARXContext {
 
-    private ARExplorer appCtx;
+    private final ARExplorer appCtx;
+    private final ARXLocationManager locationManager;
 
-    private Random rand;
+    private Random rand=new Random(System.currentTimeMillis());
 
     private final ARXDownload downloadManager;
     private final ARXRender renderManager;
 
-    private GeoPoint curLoc = new GeoPoint();
+    // private GeoPoint curLoc = new GeoPoint();
     private Matrix3D rotationMatrix = new Matrix3D();
 
-    private boolean lowCompassAccuracy = false;
-    private float declination = 0f;
+    // private boolean lowCompassAccuracy = false;
+    // private float declination = 0f;
 
-    public AndroidARXContext(Context appCtx) {
+    public AndroidARXContext(Context appCtx, ARXLocationManager locationManager) {
         this.appCtx = (ARExplorer) appCtx;
         downloadManager = new ARXDownload(this);
         renderManager = new ARXRender(this);
 
-        rotationMatrix.setToIdentity();
+        this.locationManager = locationManager;
+        // rotationMatrix.setToIdentity();
+        //
+        // int locationHash = 0;
+        // try {
+        // LocationManager locationMgr = (LocationManager)
+        // appCtx.getSystemService(Context.LOCATION_SERVICE);
+        // Location lastFix =
+        // locationMgr.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        // if (lastFix == null) {
+        // lastFix =
+        // locationMgr.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        // } else {
+        // locationHash = ("HASH_" + lastFix.getLatitude() + "_" +
+        // lastFix.getLongitude()).hashCode();
+        // }
+        // } catch (Exception ex) {
+        // ex.printStackTrace();
+        // }
 
-        int locationHash = 0;
-        try {
-            LocationManager locationMgr = (LocationManager) appCtx.getSystemService(Context.LOCATION_SERVICE);
-            Location lastFix = locationMgr.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if (lastFix == null) {
-                lastFix = locationMgr.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            } else {
-                locationHash = ("HASH_" + lastFix.getLatitude() + "_" + lastFix.getLongitude()).hashCode();
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        rand = new Random(System.currentTimeMillis() + locationHash);
+        // rand = new Random(System.currentTimeMillis() + locationManager.getl);
     }
 
-    public boolean gpsEnabled() {
-        return appCtx.isGpsEnabled();
-    }
-
-    public boolean gpsSignalReceived() {
-        return (appCtx.getGpsUpdates() > 0);
-    }
+    // public boolean gpsEnabled() {
+    // return appCtx.isGpsEnabled();
+    // }
+    //
+    // public boolean gpsSignalReceived() {
+    // return (appCtx.getGpsUpdates() > 0);
+    // }
 
     public ARXDownload getARXDownload() {
         return downloadManager;
@@ -93,11 +99,11 @@ public class AndroidARXContext implements ARXContext {
     }
 
     public float getDeclination() {
-        return declination;
+        return locationManager.getDeclination();
     }
 
     public boolean isCompassAccuracyLow() {
-        return lowCompassAccuracy;
+        return locationManager.isLowCompassAccuracy();
     }
 
     public String getLaunchUrl() {
@@ -110,25 +116,25 @@ public class AndroidARXContext implements ARXContext {
         }
     }
 
-    @Override
-    public void getRotationMatrix(Matrix3D dest) {
-        // TODO:very odd seems to be a setter rather than a getter
-        synchronized (rotationMatrix) {
-            dest.setTo(rotationMatrix);
-        }
-    }
+//    @Override
+//    public void getRotationMatrix(Matrix3D dest) {
+//        // TODO:very odd seems to be a setter rather than a getter
+//        synchronized (rotationMatrix) {
+//            dest.setTo(rotationMatrix);
+//        }
+//    }
 
+    @Override
     public Matrix3D getRotationMatrix() {
         return rotationMatrix;
     }
 
-    public void getCurrentLocation(GeoPoint dest) {
-        synchronized (curLoc) {
-            dest.lat = curLoc.lat;
-            dest.lon = curLoc.lon;
-            dest.alt = curLoc.alt;
-        }
-    }
+    // public void getCurrentLocation(GeoPoint dest) {
+    // Location location = locationManager.getCurrentLocation();
+    // dest.lat = location.getLatitude();
+    // dest.lon = location.getLongitude();
+    // dest.alt = location.getAltitude();
+    // }
 
     public com.gamaray.arex.gui.Bitmap createBitmap(InputStream is) throws Exception {
         Bitmap bmp = BitmapFactory.decodeStream(new FlushedInputStream(is), null, null);
@@ -313,7 +319,6 @@ public class AndroidARXContext implements ARXContext {
         editor.commit();
     }
 
-
     public ARXDownload getDownloadManager() {
         return downloadManager;
     }
@@ -322,20 +327,19 @@ public class AndroidARXContext implements ARXContext {
         return renderManager;
     }
 
-    public void setAppCtx(ARExplorer appCtx) {
-        this.appCtx = appCtx;
+    public GeoPoint getCurrentLocation() {
+        Location location = locationManager.getCurrentLocation();
+        return new GeoPoint(location.getLatitude(), location.getLongitude(), location.getAltitude());
     }
 
-    public GeoPoint getCurLoc() {
-        return curLoc;
+    @Override
+    public boolean gpsEnabled() {
+        return locationManager.isGpsEnabled();
     }
 
-    public void setDeclination(float declination) {
-        this.declination = declination;
-    }
-
-    public void setLowCompassAccuracy(boolean lowCompassAccuracy) {
-        this.lowCompassAccuracy = lowCompassAccuracy;
+    @Override
+    public boolean gpsSignalReceived() {
+        return locationManager.getGpsUpdates()>0;
     }
 
 }

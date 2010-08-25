@@ -7,8 +7,10 @@ import android.graphics.Paint;
 import android.view.View;
 
 import com.gamaray.arex.ARExplorer;
+import com.gamaray.arex.event.EventBus;
+import com.gamaray.arex.event.OrientationChangeEvent;
 
-public class AugmentedView extends View {
+public class AugmentedView extends View implements OrientationChangeEvent.Handler{
     private ARExplorer app;
 
     public AugmentedView(Context context) {
@@ -21,6 +23,8 @@ public class AugmentedView extends View {
         } catch (Exception ex) {
             app.doError(ex);
         }
+        EventBus.get().register(OrientationChangeEvent.TYPE, this);
+        
     }
 
     @Override
@@ -51,5 +55,10 @@ public class AugmentedView extends View {
         } catch (Exception ex) {
             app.doError(ex);
         }
+    }
+
+    @Override
+    public void onOrientationChange(OrientationChangeEvent p) {
+        postInvalidate();        
     }
 }

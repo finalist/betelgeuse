@@ -1,5 +1,7 @@
 package com.gamaray.arex.gui;
 
+import android.view.View;
+
 
 public interface DrawWindow {
     public int getWidth();
@@ -33,4 +35,6 @@ public interface DrawWindow {
     public float getTextLeading();
 
     public void drawText(float x, float y, String text);
+    
+    public void drawUrlWindow(String url,float x,float y);
 }

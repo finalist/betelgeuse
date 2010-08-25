@@ -63,7 +63,7 @@ public class ARXView {
     MenuItem miHideMessages = new MenuItem(7, "Hide Messages");
     MenuItem miRefresh = new MenuItem(8, "Reload");
     MenuItem miHome = new MenuItem(9, "Home" + (SERVER.equals(LOCAL_SERVER) ? " (LOCAL)" : ""));
-    
+
     public ARXView(ARXContext ctx) {
         this.ctx = ctx;
     }
@@ -114,10 +114,8 @@ public class ARXView {
         if (!ctx.gpsEnabled()) {
             ARXMessages.putMessage("GPS_ENABLED", "GPS not Enabled (see Settings->Security & location->Enable GPS)",
                     ARXMessages.errorIcon, 500);
-        }
-
-        // Check if GPS signal received
-        if (!ctx.gpsSignalReceived()) {
+        } else if (!ctx.gpsSignalReceived()) {
+            // Check if GPS signal received
             ARXMessages.putMessage("GPS_WAIT", "Waiting for GPS signal", ARXMessages.worldIcon, 500);
         }
 
@@ -126,11 +124,12 @@ public class ARXView {
             ARXMessages.putMessage("COMPASS_ACCURACY", "Compass accuracy low", ARXMessages.compassIcon, 1000);
         }
 
-        if (ctx.gpsEnabled()) {
-            drawDimension(dw);
-        } else {
-            purgeEvents();
-        }
+        // if (ctx.gpsEnabled()) {
+        //TODO: Maybe don't draw the dimension if there is no position.
+        drawDimension(dw);
+        // } else {
+        // purgeEvents();
+        // }
 
         ARXMessages.expireMessages();
         int msgCount = ARXMessages.getMessageCount();
@@ -184,7 +183,6 @@ public class ARXView {
 
         state.screenWidth = width;
         state.screenHeight = height;
-        
 
         if (ctx.getLaunchUrl().equals("") || ctx.getLaunchUrl().equals(state.launchUrl)) {
             state.launchNeeded = false;
@@ -331,7 +329,6 @@ public class ARXView {
             // Prepare placemarks for draw
             pm.prepareDraw(cam);
         }
-
 
         // Draw placemarks
         for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
@@ -936,8 +933,8 @@ class RadarObjects implements Drawable {
 
         float scale = range / RADIUS;
 
-        //TODO:these should also be ordered.
-        
+        // TODO:these should also be ordered.
+
         for (Placemark pm : state.layer.getZOrderedPlacemarks()) {
             float x = pm.obj.location.x / scale;
             float y = pm.obj.location.z / scale;
@@ -948,7 +945,7 @@ class RadarObjects implements Drawable {
                 dw.drawRectangle(x + RADIUS - 1, y + RADIUS - 1, 2, 2);
             }
         }
-        
+
     }
 
     public float getWidth() {

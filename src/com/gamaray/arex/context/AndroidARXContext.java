@@ -329,7 +329,11 @@ public class AndroidARXContext implements ARXContext {
 
     public GeoPoint getCurrentLocation() {
         Location location = locationManager.getCurrentLocation();
-        return new GeoPoint(location.getLatitude(), location.getLongitude(), location.getAltitude());
+        if (location!=null){
+            return new GeoPoint(location.getLatitude(), location.getLongitude(), location.getAltitude());
+        } else {
+            return null;
+        }
     }
 
     @Override

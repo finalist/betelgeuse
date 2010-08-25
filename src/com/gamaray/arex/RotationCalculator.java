@@ -14,7 +14,6 @@ public class RotationCalculator {
     private final Matrix3D m2 = new Matrix3D();
     private final Matrix3D m3 = new Matrix3D();
     private final Matrix3D m4 = new Matrix3D();
-    private int rotationHistIdx = 0;
 
     public RotationCalculator() {
         double angleX, angleY;

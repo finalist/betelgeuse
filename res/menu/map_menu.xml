@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/close_map"
+          android:title="Close Map"/>
+    <item android:id="@+id/center_map"
+          android:title="Zoom to position"/>
+</menu>
